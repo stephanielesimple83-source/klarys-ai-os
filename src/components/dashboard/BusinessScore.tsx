@@ -5,9 +5,7 @@ export default function BusinessScore() {
     <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-slate-400">
-            Business Score
-          </p>
+          <p className="text-sm text-slate-400">Business Score</p>
 
           <h2 className="mt-2 text-5xl font-bold text-cyan-400">
             {score}
@@ -23,13 +21,13 @@ export default function BusinessScore() {
             Santé globale
           </p>
 
-          <p className="mt-2 text-emerald-400 font-semibold">
+          <p className="mt-2 font-semibold text-emerald-400">
             +4 cette semaine
           </p>
         </div>
       </div>
 
-      <div className="mt-6 h-3 rounded-full bg-slate-800 overflow-hidden">
+      <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-800">
         <div
           className="h-full rounded-full bg-cyan-400"
           style={{ width: `${score}%` }}

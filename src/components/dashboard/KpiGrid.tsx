@@ -9,7 +9,7 @@ import KpiCard from "./KpiCard";
 
 export default function KpiGrid() {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <KpiCard
         title="Chiffre d’affaires"
         value="286 €"
@@ -35,8 +35,8 @@ export default function KpiGrid() {
 
       <KpiCard
         title="Objectif mensuel"
-        value="6 000 €"
-        subtitle="38 % atteint"
+        value="38 %"
+        subtitle="2 286 € sur 6 000 €"
         icon={Target}
       />
     </div>

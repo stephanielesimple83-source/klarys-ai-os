@@ -16,7 +16,9 @@ export default function AppShell({ children }: AppShellProps) {
         <div className="min-w-0 flex-1">
           <Header />
 
-          <main className="p-5 md:p-8">{children}</main>
+          <main className="p-5 md:p-8">
+            {children}
+          </main>
         </div>
       </div>
     </div>

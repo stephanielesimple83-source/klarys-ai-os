@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Bot,
   Globe2,
@@ -7,35 +9,40 @@ import {
   Settings,
 } from "lucide-react";
 
+import { usePathname } from "next/navigation";
+
 const navigation = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    active: true,
+    href: "/",
   },
   {
     label: "Dialotel",
     icon: PhoneCall,
-    active: false,
+    href: "/dialotel/crm",
   },
   {
     label: "Wix",
     icon: Globe2,
-    active: false,
+    href: "/wix",
   },
   {
     label: "Réseaux sociaux",
     icon: Megaphone,
-    active: false,
+    href: "/social",
   },
   {
     label: "CEO AI",
     icon: Bot,
-    active: false,
+    href: "/ceo-ai",
   },
 ];
 
 export default function Sidebar() {
+  const pathname =
+    usePathname();
+
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-slate-800 bg-slate-950 lg:flex lg:flex-col">
       <div className="border-b border-slate-800 px-6 py-6">
@@ -50,33 +57,47 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-2 px-4 py-6">
         {navigation.map((item) => {
-          const Icon = item.icon;
+          const Icon =
+            item.icon;
+
+          const active =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname.startsWith(
+                  item.href,
+                );
 
           return (
-            <button
+            <a
               key={item.label}
-              type="button"
+              href={item.href}
               className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
-                item.active
+                active
                   ? "bg-cyan-400 text-slate-950"
                   : "text-slate-400 hover:bg-slate-900 hover:text-white"
               }`}
             >
               <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
-            </button>
+
+              <span>
+                {item.label}
+              </span>
+            </a>
           );
         })}
       </nav>
 
       <div className="border-t border-slate-800 p-4">
-        <button
-          type="button"
+        <a
+          href="/settings"
           className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-slate-400 transition hover:bg-slate-900 hover:text-white"
         >
           <Settings className="h-5 w-5" />
-          <span>Paramètres</span>
-        </button>
+
+          <span>
+            Paramètres
+          </span>
+        </a>
       </div>
     </aside>
   );

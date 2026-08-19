@@ -1,6 +1,6 @@
 import BusinessGoal from "./BusinessGoal";
 import BusinessScore from "./BusinessScore";
-import CEOCard from "./CEOCard";
+import CeoAssistant from "@/components/ai/CeoAssistant";
 import DashboardChart from "./DashboardChart";
 import KpiGrid from "./KpiGrid";
 import RecentActivity from "./RecentActivity";
@@ -32,7 +32,7 @@ export default function Dashboard() {
 
         <div className="space-y-6">
           <BusinessScore />
-          <CEOCard />
+          <CeoAssistant />
         </div>
       </section>
 

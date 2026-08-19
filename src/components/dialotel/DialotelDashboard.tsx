@@ -1,230 +1,350 @@
 import {
-  Clock3,
-  CircleDollarSign,
+  Activity,
   PhoneCall,
   Users,
-  UserRoundCheck,
 } from "lucide-react";
 
+import CEODashboardCard from "@/components/ai/CEODashboardCard";
+import ExpertsRanking from "@/components/dialotel/ExpertsRanking";
+import ExpertsTable from "@/components/dialotel/ExpertsTable";
+import LiveActivityCard from "@/components/dialotel/LiveActivityCard";
+import RevenueOverview from "@/components/dialotel/RevenueOverview";
 import AppShell from "@/components/layout/AppShell";
+import Badge from "@/components/ui/Badge";
+import Card from "@/components/ui/Card";
+import PageHeader from "@/components/ui/PageHeader";
+import Section from "@/components/ui/Section";
+import StatCard from "@/components/ui/StatCard";
+import { getDialotelStats } from "@/lib/api";
 import {
-  getDialotelDashboard,
   getExperts,
+  getLiveData,
 } from "@/services/dialotel.service";
 
+function formatCurrency(value: number): string {
+  return value.toLocaleString("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function calculatePercentageChange(
+  current: number,
+  previous: number,
+): number | null {
+  if (previous === 0) {
+    return null;
+  }
+
+  return ((current - previous) / previous) * 100;
+}
+
+function formatPercentage(
+  value: number | null,
+): string {
+  if (value === null) {
+    return "—";
+  }
+
+  const sign = value >= 0 ? "+" : "";
+
+  return `${sign}${value.toLocaleString("fr-FR", {
+    maximumFractionDigits: 1,
+  })} %`;
+}
+
 export default async function DialotelDashboard() {
-  const dashboard = await getDialotelDashboard();
-  const experts = await getExperts();
+  const [stats, experts, live] = await Promise.all([
+    getDialotelStats(),
+    getExperts(),
+    getLiveData(),
+  ]);
 
-  const statusStyles = {
-    online: "bg-emerald-500/10 text-emerald-400",
-    busy: "bg-amber-500/10 text-amber-400",
-    offline: "bg-slate-800 text-slate-400",
-  };
+  const cabinetToday =
+    stats.caCabinet.aujourdHui;
 
-  const statusLabels = {
-    online: "Disponible",
-    busy: "En consultation",
-    offline: "Hors ligne",
-  };
+  const synergyToday =
+    stats.caSynergie.aujourdHui;
 
-  const kpis = [
-    {
-      label: "Chiffre d’affaires",
-      value: `${dashboard.revenue.toLocaleString("fr-FR")} €`,
-      subtitle: "Aujourd’hui",
-      icon: CircleDollarSign,
-    },
-    {
-      label: "Consultations",
-      value: dashboard.consultations.toString(),
-      subtitle: "Privé et Audiotel",
-      icon: PhoneCall,
-    },
-    {
-      label: "Experts connectés",
-      value: dashboard.connectedExperts.toString(),
-      subtitle: "Équipe et synergies",
-      icon: Users,
-    },
-    {
-      label: "Appels en attente",
-      value: dashboard.waitingCalls.toString(),
-      subtitle: "À prendre en charge",
-      icon: UserRoundCheck,
-    },
-    {
-      label: "Durée moyenne",
-      value: dashboard.averageDuration,
-      subtitle: "Par consultation",
-      icon: Clock3,
-    },
-  ];
+  const totalRevenueToday =
+    cabinetToday + synergyToday;
+
+  const connectedExperts = experts.filter(
+    (expert) =>
+      expert.status === "online" ||
+      expert.status === "busy",
+  ).length;
+
+  const topExpert = [...experts].sort(
+    (a, b) => b.revenue - a.revenue,
+  )[0];
+
+  const cabinetChange =
+    calculatePercentageChange(
+      stats.caCabinet.mois,
+      stats.caCabinet.moisPrecedent,
+    );
+
+  const synergyChange =
+    calculatePercentageChange(
+      stats.caSynergie.mois,
+      stats.caSynergie.moisPrecedent,
+    );
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1600px] space-y-8">
-        <section className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
-          <div>
-            <p className="text-sm font-medium text-cyan-400">
-              Module Dialotel
-            </p>
+      <div className="mx-auto max-w-[1600px] space-y-10">
+        <PageHeader
+          badge="Module Dialotel"
+          title="Pilotage des consultations"
+          description="Pilotez séparément le Cabinet et la Synergie, suivez l’activité Live et analysez les performances de vos experts."
+          rightContent={
+            <Badge variant="success">
+              Données Dialotel connectées
+            </Badge>
+          }
+        />
 
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
-              Pilotage des consultations
-            </h1>
+        <CEODashboardCard
+          cabinetToday={cabinetToday}
+          synergyToday={synergyToday}
+          consultations={stats.consultations}
+          connectedExperts={connectedExperts}
+          expertsTotal={experts.length}
+          currentCalls={live.currentCallsCount}
+        />
 
-            <p className="mt-2 max-w-2xl text-slate-400">
-              Suivez le chiffre d’affaires, les consultations et la
-              disponibilité des experts depuis un seul écran.
-            </p>
+        <RevenueOverview
+          cabinetToday={cabinetToday}
+          synergyToday={synergyToday}
+          cabinetMonth={stats.caCabinet.mois}
+          synergyMonth={stats.caSynergie.mois}
+          cabinetPreviousMonth={
+            stats.caCabinet.moisPrecedent
+          }
+          synergyPreviousMonth={
+            stats.caSynergie.moisPrecedent
+          }
+        />
+
+        <Section
+          title="Vue opérationnelle"
+          subtitle="Les indicateurs essentiels pour suivre l’activité en cours."
+        >
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="CA total aujourd’hui"
+              value={`${formatCurrency(
+                totalRevenueToday,
+              )} €`}
+              subtitle="Cabinet + Synergie"
+              icon={Activity}
+            />
+
+            <StatCard
+              title="Consultations"
+              value={stats.consultations}
+              subtitle="Ce mois-ci"
+              icon={PhoneCall}
+            />
+
+            <StatCard
+              title="Experts disponibles"
+              value={connectedExperts}
+              subtitle={`${experts.length} experts actifs`}
+              icon={Users}
+            />
+
+            <StatCard
+              title="Consultations Live"
+              value={live.currentCallsCount}
+              subtitle={
+                live.currentCallsCount > 0
+                  ? "En cours actuellement"
+                  : "Aucune en cours"
+              }
+              icon={PhoneCall}
+            />
           </div>
+        </Section>
 
-          <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-400">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-            Données simulées actives
-          </div>
-        </section>
+        <Section
+          title="Activité Live"
+          subtitle="Consultations en cours, dernières consultations et appels manqués."
+        >
+          <LiveActivityCard live={live} />
+        </Section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {kpis.map((kpi) => {
-            const Icon = kpi.icon;
+        <Section
+          title="Performance des experts"
+          subtitle="Disponibilité, consultations et chiffre d’affaires des experts."
+        >
+          <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <ExpertsTable experts={experts} />
 
-            return (
-              <article
-                key={kpi.label}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-slate-400">{kpi.label}</p>
+            <div className="space-y-6">
+              <ExpertsRanking experts={experts} />
 
-                    <p className="mt-3 text-3xl font-bold text-white">
-                      {kpi.value}
-                    </p>
-                  </div>
+              <Card className="p-6">
+                <div>
+                  <p className="text-sm font-medium text-slate-400">
+                    Comparatif du mois
+                  </p>
 
-                  <div className="rounded-xl bg-cyan-500/10 p-3 text-cyan-400">
-                    <Icon className="h-5 w-5" />
-                  </div>
+                  <h2 className="mt-1 text-xl font-semibold text-white">
+                    Cabinet vs Synergie
+                  </h2>
                 </div>
 
-                <p className="mt-4 text-xs text-slate-500">
-                  {kpi.subtitle}
-                </p>
-              </article>
-            );
-          })}
-        </section>
+                <div className="mt-6 space-y-6">
+                  <div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-cyan-400">
+                          Cabinet
+                        </p>
 
-        <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-          <article className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  Experts de l’équipe
+                        <p className="mt-1 text-xs text-slate-500">
+                          Chiffre d’affaires Cabinet uniquement
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="font-semibold text-white">
+                          {formatCurrency(
+                            stats.caCabinet.mois,
+                          )}{" "}
+                          €
+                        </p>
+
+                        <p
+                          className={`mt-1 text-xs font-medium ${
+                            cabinetChange !== null &&
+                            cabinetChange >= 0
+                              ? "text-emerald-400"
+                              : "text-rose-400"
+                          }`}
+                        >
+                          {formatPercentage(
+                            cabinetChange,
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-between gap-4 text-xs">
+                      <span className="text-slate-500">
+                        Mois précédent
+                      </span>
+
+                      <span className="text-slate-300">
+                        {formatCurrency(
+                          stats.caCabinet.moisPrecedent,
+                        )}{" "}
+                        €
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-800 pt-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-violet-400">
+                          Synergie
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Chiffre d’affaires Synergie uniquement
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="font-semibold text-white">
+                          {formatCurrency(
+                            stats.caSynergie.mois,
+                          )}{" "}
+                          €
+                        </p>
+
+                        <p
+                          className={`mt-1 text-xs font-medium ${
+                            synergyChange !== null &&
+                            synergyChange >= 0
+                              ? "text-emerald-400"
+                              : "text-rose-400"
+                          }`}
+                        >
+                          {formatPercentage(
+                            synergyChange,
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-between gap-4 text-xs">
+                      <span className="text-slate-500">
+                        Mois précédent
+                      </span>
+
+                      <span className="text-slate-300">
+                        {formatCurrency(
+                          stats.caSynergie.moisPrecedent,
+                        )}{" "}
+                        €
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="border-cyan-500/20 bg-cyan-500/5 p-6">
+                <p className="text-sm font-medium text-cyan-400">
+                  Meilleure performance
+                </p>
+
+                <h2 className="mt-3 text-lg font-semibold text-white">
+                  {topExpert
+                    ? `Top expert : ${topExpert.name}`
+                    : "Classement en attente"}
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-400">
-                  Disponibilité et performance du jour
+                {topExpert ? (
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    {topExpert.name} totalise{" "}
+                    <span className="font-semibold text-white">
+                      {topExpert.calls} appel
+                      {topExpert.calls > 1 ? "s" : ""}
+                    </span>{" "}
+                    pour un chiffre d’affaires de{" "}
+                    <span className="font-semibold text-cyan-400">
+                      {formatCurrency(
+                        topExpert.revenue,
+                      )}{" "}
+                      €
+                    </span>
+                    .
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    Aucune donnée expert disponible.
+                  </p>
+                )}
+              </Card>
+
+              <Card className="border-violet-500/20 bg-violet-500/5 p-6">
+                <p className="text-sm font-medium text-violet-400">
+                  Règle de pilotage
                 </p>
-              </div>
 
-              <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-400">
-                {experts.length} profils affichés
-              </span>
+                <p className="mt-3 text-sm leading-6 text-slate-400">
+                  Le Cabinet et la Synergie sont analysés
+                  séparément. Le total général sert uniquement
+                  à donner une vue synthétique de l’activité.
+                </p>
+              </Card>
             </div>
-
-            <div className="mt-6 overflow-x-auto">
-              <table className="w-full min-w-[650px] text-left">
-                <thead>
-                  <tr className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
-                    <th className="pb-3 font-medium">Expert</th>
-                    <th className="pb-3 font-medium">Statut</th>
-                    <th className="pb-3 font-medium">Consultations</th>
-                    <th className="pb-3 text-right font-medium">CA</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {experts.map((expert) => (
-                    <tr
-                      key={expert.id}
-                      className="border-b border-slate-800/70 last:border-0"
-                    >
-                      <td className="py-4 font-medium text-white">
-                        {expert.name}
-                      </td>
-
-                      <td className="py-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[expert.status]}`}
-                        >
-                          {statusLabels[expert.status]}
-                        </span>
-                      </td>
-
-                      <td className="py-4 text-slate-300">
-                        {expert.calls}
-                      </td>
-
-                      <td className="py-4 text-right font-semibold text-cyan-400">
-                        {expert.revenue.toLocaleString("fr-FR")} €
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          <div className="space-y-6">
-            <article className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-xl font-semibold text-white">
-                Répartition du jour
-              </h2>
-
-              <div className="mt-6 space-y-5">
-                <div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Consultations privées</span>
-                    <span className="font-medium text-white">62 %</span>
-                  </div>
-
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
-                    <div className="h-full w-[62%] rounded-full bg-cyan-400" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Audiotel</span>
-                    <span className="font-medium text-white">38 %</span>
-                  </div>
-
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
-                    <div className="h-full w-[38%] rounded-full bg-violet-400" />
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
-              <p className="text-sm font-medium text-amber-400">
-                Alerte opérationnelle
-              </p>
-
-              <h2 className="mt-2 text-lg font-semibold text-white">
-                Deux appels sont actuellement en attente
-              </h2>
-
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                Le CEO AI recommandera bientôt les experts à solliciter selon
-                leur disponibilité et leurs performances.
-              </p>
-            </article>
           </div>
-        </section>
+        </Section>
       </div>
     </AppShell>
   );

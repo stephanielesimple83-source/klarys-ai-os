@@ -24,6 +24,11 @@ export async function GET(
       "tiktok_open_id",
     )?.value;
 
+  const cookieTest =
+    request.cookies.get(
+      "tiktok_cookie_test",
+    )?.value;
+
   return NextResponse.json({
     connected:
       Boolean(accessToken),
@@ -36,5 +41,8 @@ export async function GET(
 
     openIdPresent:
       Boolean(openId),
+
+    cookieTestPresent:
+      Boolean(cookieTest),
   });
 }

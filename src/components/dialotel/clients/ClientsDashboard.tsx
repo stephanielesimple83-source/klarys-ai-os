@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Crown,
@@ -66,7 +66,7 @@ function getSegmentLabel(
       return "Premium";
 
     case "REGULIER":
-      return "Régulier";
+      return "RÃ©gulier";
 
     case "OCCASIONNEL":
       return "Occasionnel";
@@ -302,10 +302,10 @@ export default function ClientsDashboard({
       <PageHeader
         badge="CRM Intelligence"
         title="Clients"
-        description="Analysez votre fichier Dialotel, vos segments CRM et les fiches Client 360°."
+        description="Analysez votre fichier Dialotel, vos segments CRM et les fiches Client 360Â°."
         rightContent={
           <Badge variant="success">
-            {crmCalculatedClients} CRM calculé
+            {crmCalculatedClients} CRM calculÃ©
             {crmCalculatedClients > 1
               ? "s"
               : ""}
@@ -322,7 +322,7 @@ export default function ClientsDashboard({
         />
 
         <StatCard
-          title="CRM analysés"
+          title="CRM analysÃ©s"
           value={crmCalculatedClients}
           subtitle={`${Math.round(
             totalClients > 0
@@ -347,16 +347,16 @@ export default function ClientsDashboard({
           title="CA clients"
           value={`${formatCurrency(
             totalSpent,
-          )} €`}
-          subtitle="Dépenses cumulées"
+          )} â‚¬`}
+          subtitle="DÃ©penses cumulÃ©es"
           icon={WalletCards}
         />
 
         <StatCard
-          title="Dépense moyenne"
+          title="DÃ©pense moyenne"
           value={`${formatCurrency(
             averageSpent,
-          )} €`}
+          )} â‚¬`}
           subtitle="Par client"
           icon={WalletCards}
         />
@@ -365,7 +365,7 @@ export default function ClientsDashboard({
       {bestClient && (
         <Card className="border-cyan-500/20 bg-cyan-500/5 p-6">
           <p className="text-sm font-medium text-cyan-400">
-            CEO AI — Client à forte valeur
+            CEO AI â€” Client Ã  forte valeur
           </p>
 
           <div className="mt-4 flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
@@ -388,7 +388,7 @@ export default function ClientsDashboard({
                   </span>
                 ) : (
                   <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-400">
-                    CRM non calculé
+                    CRM non calculÃ©
                   </span>
                 )}
 
@@ -410,14 +410,14 @@ export default function ClientsDashboard({
                 {formatCurrency(
                   bestClient.totalSpent,
                 )}{" "}
-                €
+                â‚¬
               </p>
 
               <Link
                 href={`/dialotel/clients/${bestClient.id}`}
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
               >
-                Client 360°
+                Client 360Â°
                 <ExternalLink className="h-4 w-4" />
               </Link>
             </div>
@@ -433,7 +433,7 @@ export default function ClientsDashboard({
             </h2>
 
             <p className="mt-1 text-sm text-slate-400">
-              {filteredClients.length} résultat
+              {filteredClients.length} rÃ©sultat
               {filteredClients.length > 1
                 ? "s"
                 : ""}
@@ -453,7 +453,7 @@ export default function ClientsDashboard({
                     event.target.value,
                   )
                 }
-                placeholder="Nom, pseudo, email, téléphone, expert..."
+                placeholder="Nom, pseudo, email, tÃ©lÃ©phone, expert..."
                 className="h-11 min-w-[300px] rounded-xl border border-slate-700 bg-slate-950 pl-10 pr-4 text-sm text-white outline-none transition focus:border-cyan-500"
               />
             </div>
@@ -477,7 +477,7 @@ export default function ClientsDashboard({
               </option>
 
               <option value="VIP">
-                👑 VIP
+                ðŸ‘‘ VIP
               </option>
 
               <option value="PREMIUM">
@@ -485,7 +485,7 @@ export default function ClientsDashboard({
               </option>
 
               <option value="REGULIER">
-                Régulier
+                RÃ©gulier
               </option>
 
               <option value="OCCASIONNEL">
@@ -497,7 +497,7 @@ export default function ClientsDashboard({
               </option>
 
               <option value="NON_CALCULE">
-                CRM non calculé
+                CRM non calculÃ©
               </option>
             </select>
 
@@ -514,7 +514,7 @@ export default function ClientsDashboard({
               className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-sm text-white outline-none focus:border-cyan-500"
             >
               <option value="spent">
-                Dépenses
+                DÃ©penses
               </option>
 
               <option value="score">
@@ -522,11 +522,11 @@ export default function ClientsDashboard({
               </option>
 
               <option value="recent">
-                Dernière consultation
+                DerniÃ¨re consultation
               </option>
 
               <option value="name">
-                Nom A → Z
+                Nom A â†’ Z
               </option>
             </select>
           </div>
@@ -553,7 +553,7 @@ export default function ClientsDashboard({
                 </th>
 
                 <th className="px-3 py-4">
-                  Dernière consultation
+                  DerniÃ¨re consultation
                 </th>
 
                 <th className="px-3 py-4">
@@ -561,7 +561,7 @@ export default function ClientsDashboard({
                 </th>
 
                 <th className="px-3 py-4">
-                  Dépensé
+                  DÃ©pensÃ©
                 </th>
 
                 <th className="px-3 py-4 text-right">
@@ -596,7 +596,7 @@ export default function ClientsDashboard({
                           {client.code && (
                             <>
                               <span>
-                                •
+                                â€¢
                               </span>
 
                               <span>
@@ -633,7 +633,7 @@ export default function ClientsDashboard({
                         </div>
                       ) : (
                         <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-500">
-                          Non calculé
+                          Non calculÃ©
                         </span>
                       )}
                     </td>
@@ -663,7 +663,7 @@ export default function ClientsDashboard({
                         {!client.email &&
                           !client.phone && (
                             <span className="text-slate-600">
-                              —
+                              â€”
                             </span>
                           )}
                       </div>
@@ -677,19 +677,19 @@ export default function ClientsDashboard({
                           </p>
 
                           <p className="mt-1 text-xs text-slate-500">
-                            Expert le plus consulté
+                            Expert le plus consultÃ©
                           </p>
                         </div>
                       ) : (
                         <span className="text-sm text-slate-600">
-                          —
+                          â€”
                         </span>
                       )}
                     </td>
 
                     <td className="px-3 py-4 text-sm text-slate-300">
                       {client.lastConsultationDate ??
-                        "—"}
+                        "â€”"}
                     </td>
 
                     <td className="px-3 py-4">
@@ -700,7 +700,7 @@ export default function ClientsDashboard({
                         </span>
                       ) : (
                         <span className="text-slate-600">
-                          —
+                          â€”
                         </span>
                       )}
                     </td>
@@ -710,7 +710,7 @@ export default function ClientsDashboard({
                         {formatCurrency(
                           client.totalSpent,
                         )}{" "}
-                        €
+                        â‚¬
                       </span>
                     </td>
 
@@ -733,7 +733,7 @@ export default function ClientsDashboard({
             0 && (
             <div className="py-16 text-center">
               <p className="text-sm text-slate-500">
-                Aucun client ne correspond à ces critères.
+                Aucun client ne correspond Ã  ces critÃ¨res.
               </p>
             </div>
           )}

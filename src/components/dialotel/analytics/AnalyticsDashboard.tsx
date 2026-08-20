@@ -1,4 +1,4 @@
-import {
+﻿import {
   CalendarDays,
   CircleDollarSign,
   PhoneCall,
@@ -45,7 +45,7 @@ function formatChange(
 
   return `${sign}${value.toLocaleString("fr-FR", {
     maximumFractionDigits: 1,
-  })} % vs mois précédent`;
+  })} % vs mois prÃ©cÃ©dent`;
 }
 
 export default async function AnalyticsDashboard() {
@@ -72,25 +72,25 @@ export default async function AnalyticsDashboard() {
     <div className="mx-auto max-w-[1600px] space-y-10">
       <PageHeader
         badge="Dialotel Analytics"
-        title="Centre d’analyse"
-        description="Analysez séparément le Cabinet et la Synergie, les performances des experts, le Live et la couverture du planning."
+        title="Centre dâ€™analyse"
+        description="Analysez sÃ©parÃ©ment le Cabinet et la Synergie, les performances des experts, le Live et la couverture du planning."
         rightContent={
           <Badge variant="success">
-            Analytics connectés
+            Analytics connectÃ©s
           </Badge>
         }
       />
 
       <Section
-        title="Chiffre d’affaires"
-        subtitle="Le Cabinet et la Synergie restent séparés dans toutes les analyses."
+        title="Chiffre dâ€™affaires"
+        subtitle="Le Cabinet et la Synergie restent sÃ©parÃ©s dans toutes les analyses."
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Cabinet"
             value={`${formatCurrency(
               analytics.revenue.month.cabinet,
-            )} €`}
+            )} â‚¬`}
             subtitle="Ce mois-ci"
             trend={formatChange(cabinetChange)}
             trendType={
@@ -107,7 +107,7 @@ export default async function AnalyticsDashboard() {
             title="Synergie"
             value={`${formatCurrency(
               analytics.revenue.month.synergy,
-            )} €`}
+            )} â‚¬`}
             subtitle="Ce mois-ci"
             trend={formatChange(synergyChange)}
             trendType={
@@ -124,7 +124,7 @@ export default async function AnalyticsDashboard() {
             title="Total"
             value={`${formatCurrency(
               analytics.revenue.month.total,
-            )} €`}
+            )} â‚¬`}
             subtitle="Cabinet + Synergie"
             trend={formatChange(totalChange)}
             trendType={
@@ -138,15 +138,15 @@ export default async function AnalyticsDashboard() {
           />
 
           <StatCard
-            title="CA aujourd’hui"
+            title="CA aujourdâ€™hui"
             value={`${formatCurrency(
               analytics.revenue.today.total,
-            )} €`}
+            )} â‚¬`}
             subtitle={`Cabinet ${formatCurrency(
               analytics.revenue.today.cabinet,
-            )} € • Synergie ${formatCurrency(
+            )} â‚¬ â€¢ Synergie ${formatCurrency(
               analytics.revenue.today.synergy,
-            )} €`}
+            )} â‚¬`}
             icon={CircleDollarSign}
           />
         </div>
@@ -174,12 +174,12 @@ export default async function AnalyticsDashboard() {
       </section>
 
       <Section
-        title="Performance opérationnelle"
-        subtitle="Experts, activité Live et couverture du planning."
+        title="Performance opÃ©rationnelle"
+        subtitle="Experts, activitÃ© Live et couverture du planning."
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            title="Experts planifiés"
+            title="Experts planifiÃ©s"
             value={
               analytics.planning.expertsScheduled
             }
@@ -192,7 +192,7 @@ export default async function AnalyticsDashboard() {
             value={
               analytics.planning.currentlyScheduled
             }
-            subtitle="Actuellement planifiés"
+            subtitle="Actuellement planifiÃ©s"
             icon={CalendarDays}
           />
 
@@ -204,9 +204,9 @@ export default async function AnalyticsDashboard() {
           />
 
           <StatCard
-            title="Appels manqués"
+            title="Appels manquÃ©s"
             value={analytics.live.missedCalls}
-            subtitle="Activité Live"
+            subtitle="ActivitÃ© Live"
             icon={PhoneCall}
           />
         </div>
@@ -228,7 +228,7 @@ export default async function AnalyticsDashboard() {
         </p>
 
         <h2 className="mt-2 text-xl font-semibold text-white">
-          Synthèse de l’activité
+          SynthÃ¨se de lâ€™activitÃ©
         </h2>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
@@ -280,16 +280,16 @@ export default async function AnalyticsDashboard() {
                 {formatCurrency(
                   bestExpert.revenue,
                 )}{" "}
-                €
+                â‚¬
               </p>
             )}
           </div>
         </div>
 
         <p className="mt-5 text-sm leading-6 text-slate-400">
-          Les graphiques historiques et horaires apparaîtront
-          uniquement lorsque des données Dialotel fiables seront
-          disponibles. Aucun chiffre artificiel n’est généré.
+          Les graphiques historiques et horaires apparaÃ®tront
+          uniquement lorsque des donnÃ©es Dialotel fiables seront
+          disponibles. Aucun chiffre artificiel nâ€™est gÃ©nÃ©rÃ©.
         </p>
       </Card>
     </div>

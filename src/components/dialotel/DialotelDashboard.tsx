@@ -1,4 +1,4 @@
-import {
+﻿import {
   Activity,
   PhoneCall,
   Users,
@@ -43,7 +43,7 @@ function formatPercentage(
   value: number | null,
 ): string {
   if (value === null) {
-    return "—";
+    return "â€”";
   }
 
   const sign = value >= 0 ? "+" : "";
@@ -97,10 +97,10 @@ export default async function DialotelDashboard() {
         <PageHeader
           badge="Module Dialotel"
           title="Pilotage des consultations"
-          description="Pilotez séparément le Cabinet et la Synergie, suivez l’activité Live et analysez les performances de vos experts."
+          description="Pilotez sÃ©parÃ©ment le Cabinet et la Synergie, suivez lâ€™activitÃ© Live et analysez les performances de vos experts."
           rightContent={
             <Badge variant="success">
-              Données Dialotel connectées
+              DonnÃ©es Dialotel connectÃ©es
             </Badge>
           }
         />
@@ -128,15 +128,15 @@ export default async function DialotelDashboard() {
         />
 
         <Section
-          title="Vue opérationnelle"
-          subtitle="Les indicateurs essentiels pour suivre l’activité en cours."
+          title="Vue opÃ©rationnelle"
+          subtitle="Les indicateurs essentiels pour suivre lâ€™activitÃ© en cours."
         >
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              title="CA total aujourd’hui"
+              title="CA total aujourdâ€™hui"
               value={`${formatCurrency(
                 totalRevenueToday,
-              )} €`}
+              )} â‚¬`}
               subtitle="Cabinet + Synergie"
               icon={Activity}
             />
@@ -169,15 +169,15 @@ export default async function DialotelDashboard() {
         </Section>
 
         <Section
-          title="Activité Live"
-          subtitle="Consultations en cours, dernières consultations et appels manqués."
+          title="ActivitÃ© Live"
+          subtitle="Consultations en cours, derniÃ¨res consultations et appels manquÃ©s."
         >
           <LiveActivityCard live={live} />
         </Section>
 
         <Section
           title="Performance des experts"
-          subtitle="Disponibilité, consultations et chiffre d’affaires des experts."
+          subtitle="DisponibilitÃ©, consultations et chiffre dâ€™affaires des experts."
         >
           <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
             <ExpertsTable experts={experts} />
@@ -205,7 +205,7 @@ export default async function DialotelDashboard() {
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          Chiffre d’affaires Cabinet uniquement
+                          Chiffre dâ€™affaires Cabinet uniquement
                         </p>
                       </div>
 
@@ -214,7 +214,7 @@ export default async function DialotelDashboard() {
                           {formatCurrency(
                             stats.caCabinet.mois,
                           )}{" "}
-                          €
+                          â‚¬
                         </p>
 
                         <p
@@ -234,14 +234,14 @@ export default async function DialotelDashboard() {
 
                     <div className="mt-4 flex justify-between gap-4 text-xs">
                       <span className="text-slate-500">
-                        Mois précédent
+                        Mois prÃ©cÃ©dent
                       </span>
 
                       <span className="text-slate-300">
                         {formatCurrency(
                           stats.caCabinet.moisPrecedent,
                         )}{" "}
-                        €
+                        â‚¬
                       </span>
                     </div>
                   </div>
@@ -254,7 +254,7 @@ export default async function DialotelDashboard() {
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          Chiffre d’affaires Synergie uniquement
+                          Chiffre dâ€™affaires Synergie uniquement
                         </p>
                       </div>
 
@@ -263,7 +263,7 @@ export default async function DialotelDashboard() {
                           {formatCurrency(
                             stats.caSynergie.mois,
                           )}{" "}
-                          €
+                          â‚¬
                         </p>
 
                         <p
@@ -283,14 +283,14 @@ export default async function DialotelDashboard() {
 
                     <div className="mt-4 flex justify-between gap-4 text-xs">
                       <span className="text-slate-500">
-                        Mois précédent
+                        Mois prÃ©cÃ©dent
                       </span>
 
                       <span className="text-slate-300">
                         {formatCurrency(
                           stats.caSynergie.moisPrecedent,
                         )}{" "}
-                        €
+                        â‚¬
                       </span>
                     </div>
                   </div>
@@ -315,31 +315,31 @@ export default async function DialotelDashboard() {
                       {topExpert.calls} appel
                       {topExpert.calls > 1 ? "s" : ""}
                     </span>{" "}
-                    pour un chiffre d’affaires de{" "}
+                    pour un chiffre dâ€™affaires de{" "}
                     <span className="font-semibold text-cyan-400">
                       {formatCurrency(
                         topExpert.revenue,
                       )}{" "}
-                      €
+                      â‚¬
                     </span>
                     .
                   </p>
                 ) : (
                   <p className="mt-2 text-sm leading-6 text-slate-400">
-                    Aucune donnée expert disponible.
+                    Aucune donnÃ©e expert disponible.
                   </p>
                 )}
               </Card>
 
               <Card className="border-violet-500/20 bg-violet-500/5 p-6">
                 <p className="text-sm font-medium text-violet-400">
-                  Règle de pilotage
+                  RÃ¨gle de pilotage
                 </p>
 
                 <p className="mt-3 text-sm leading-6 text-slate-400">
-                  Le Cabinet et la Synergie sont analysés
-                  séparément. Le total général sert uniquement
-                  à donner une vue synthétique de l’activité.
+                  Le Cabinet et la Synergie sont analysÃ©s
+                  sÃ©parÃ©ment. Le total gÃ©nÃ©ral sert uniquement
+                  Ã  donner une vue synthÃ©tique de lâ€™activitÃ©.
                 </p>
               </Card>
             </div>

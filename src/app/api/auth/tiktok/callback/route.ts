@@ -7,33 +7,47 @@ import {
   exchangeTikTokCode,
 } from "@/services/tiktok.service";
 
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
 const APP_URL =
   "https://klarys-ai-os-alpha.vercel.app";
 
-function redirectWithError(message: string) {
+function redirectWithError(
+  message: string,
+) {
   const url = new URL(
     "/reseaux-sociaux/tiktok",
     APP_URL,
   );
 
-  url.searchParams.set("error", message);
+  url.searchParams.set(
+    "error",
+    message,
+  );
 
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(
+    url,
+  );
 }
 
 export async function GET(
   request: NextRequest,
 ) {
   const code =
-    request.nextUrl.searchParams.get("code");
+    request.nextUrl.searchParams.get(
+      "code",
+    );
 
   const state =
-    request.nextUrl.searchParams.get("state");
+    request.nextUrl.searchParams.get(
+      "state",
+    );
 
   const error =
-    request.nextUrl.searchParams.get("error");
+    request.nextUrl.searchParams.get(
+      "error",
+    );
 
   const errorDescription =
     request.nextUrl.searchParams.get(
@@ -42,7 +56,8 @@ export async function GET(
 
   if (error) {
     return redirectWithError(
-      errorDescription ?? error,
+      errorDescription ??
+        error,
     );
   }
 
@@ -69,7 +84,9 @@ export async function GET(
 
   try {
     const tokens =
-      await exchangeTikTokCode(code);
+      await exchangeTikTokCode(
+        code,
+      );
 
     const url = new URL(
       "/reseaux-sociaux/tiktok",
@@ -82,11 +99,17 @@ export async function GET(
     );
 
     const response =
-      NextResponse.redirect(url);
+      NextResponse.redirect(
+        url,
+      );
 
-    response.cookies.delete(
-      "tiktok_oauth_state",
-    );
+    /*
+     * Cookies de session TikTok.
+     *
+     * Pas de maxAge pour le moment :
+     * ils restent actifs pendant
+     * la session navigateur.
+     */
 
     response.cookies.set(
       "tiktok_access_token",
@@ -96,7 +119,6 @@ export async function GET(
         secure: true,
         sameSite: "lax",
         path: "/",
-        maxAge: tokens.expires_in,
       },
     );
 
@@ -108,8 +130,6 @@ export async function GET(
         secure: true,
         sameSite: "lax",
         path: "/",
-        maxAge:
-          tokens.refresh_expires_in,
       },
     );
 
@@ -121,9 +141,27 @@ export async function GET(
         secure: true,
         sameSite: "lax",
         path: "/",
-        maxAge:
-          tokens.refresh_expires_in,
       },
+    );
+
+    /*
+     * Petit indicateur de connexion.
+     * Aucun token n'est exposé.
+     */
+
+    response.cookies.set(
+      "tiktok_connected",
+      "1",
+      {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+      },
+    );
+
+    response.cookies.delete(
+      "tiktok_oauth_state",
     );
 
     return response;
@@ -133,6 +171,8 @@ export async function GET(
         ? error.message
         : "Connexion TikTok impossible.";
 
-    return redirectWithError(message);
+    return redirectWithError(
+      message,
+    );
   }
 }

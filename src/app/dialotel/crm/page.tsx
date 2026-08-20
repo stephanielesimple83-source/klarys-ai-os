@@ -1,9 +1,12 @@
-import CrmIntelligenceDashboard from "@/components/dialotel/clients/CrmIntelligenceDashboard";
 import AppShell from "@/components/layout/AppShell";
+import CrmIntelligenceDashboard from "@/components/dialotel/clients/CrmIntelligenceDashboard";
 
 import {
   getAllDialotelClients,
 } from "@/services/clients.service";
+
+export const dynamic =
+  "force-dynamic";
 
 export default async function DialotelCrmPage() {
   const data =

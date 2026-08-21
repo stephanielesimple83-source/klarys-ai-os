@@ -129,15 +129,6 @@ export async function exchangeTikTokCode(
   const data =
     await response.json();
 
-  /*
-   * DIAGNOSTIC TEMPORAIRE
-   *
-   * On affiche uniquement
-   * la structure de la réponse.
-   *
-   * Aucun token ni secret
-   * n'est affiché.
-   */
   console.log(
     "TIKTOK RAW RESPONSE DEBUG",
     {
@@ -168,43 +159,48 @@ export async function exchangeTikTokCode(
           data?.open_id,
         ),
 
-      hasDataObject:
-        Boolean(
-          data?.data &&
-            typeof data.data ===
-              "object",
-        ),
+      error:
+        data?.error ?? null,
 
-      dataKeys:
-        data?.data &&
-        typeof data.data ===
-          "object"
-          ? Object.keys(
-              data.data,
-            )
-          : [],
-
-      errorType:
-        typeof data?.error,
-
-      errorCode:
-        data?.error?.code ??
-        data?.error_code ??
-        null,
-
-      errorMessage:
-        data?.error?.message ??
+      errorDescription:
         data?.error_description ??
         null,
+
+      logId:
+        data?.log_id ?? null,
     },
   );
 
-  if (!response.ok) {
-    throw new Error(
+  /*
+   * IMPORTANT :
+   *
+   * TikTok peut retourner un JSON
+   * contenant "error" même si la
+   * réponse HTTP ne suffit pas à
+   * détecter correctement l'échec.
+   */
+  if (
+    !response.ok ||
+    data?.error ||
+    !data?.access_token
+  ) {
+    const errorCode =
+      typeof data?.error === "string"
+        ? data.error
+        : data?.error?.code ??
+          "unknown";
+
+    const errorDescription =
+      data?.error_description ??
       data?.error?.message ??
-        data?.error_description ??
-        data?.error ??
-        "TikTok token exchange failed.",
+      "No description";
+
+    const logId =
+      data?.log_id ??
+      "none";
+
+    throw new Error(
+      `TikTok OAuth error: ${errorCode} - ${errorDescription} - log_id: ${logId}`,
     );
   }
 

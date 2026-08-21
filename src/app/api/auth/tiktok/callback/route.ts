@@ -88,6 +88,20 @@ export async function GET(
         code,
       );
 
+      console.log("TIKTOK TOKEN DEBUG", {
+  hasAccessToken: Boolean(tokens.access_token),
+  hasRefreshToken: Boolean(tokens.refresh_token),
+  hasOpenId: Boolean(tokens.open_id),
+  accessTokenLength:
+    tokens.access_token?.length ?? 0,
+  refreshTokenLength:
+    tokens.refresh_token?.length ?? 0,
+  openId:
+    tokens.open_id ?? null,
+  scope:
+    tokens.scope ?? null,
+});
+
     const url = new URL(
       "/reseaux-sociaux/tiktok",
       APP_URL,

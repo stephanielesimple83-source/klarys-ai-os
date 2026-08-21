@@ -28,9 +28,11 @@ const navigation = [
     href: "/wix",
   },
   {
-    label: "Réseaux sociaux",
-    icon: Megaphone,
-    href: "/social",
+   {
+  label: "Réseaux sociaux",
+  icon: Megaphone,
+  href: "/reseaux-sociaux/tiktok",
+},
   },
   {
     label: "CEO AI",

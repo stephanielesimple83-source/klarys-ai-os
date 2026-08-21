@@ -87,6 +87,42 @@ export async function GET(
         code,
       );
 
+    /*
+     * Diagnostic sécurisé :
+     * uniquement les NOMS
+     * des propriétés reçues.
+     *
+     * Aucune valeur de token
+     * n'est exposée.
+     */
+    const rootKeys =
+      tokens &&
+      typeof tokens === "object"
+        ? Object.keys(tokens)
+        : [];
+
+    const rawTokens =
+      tokens as unknown as Record<
+        string,
+        unknown
+      >;
+
+    const possibleData =
+      rawTokens?.data;
+
+    const dataKeys =
+      possibleData &&
+      typeof possibleData ===
+        "object" &&
+      !Array.isArray(possibleData)
+        ? Object.keys(
+            possibleData as Record<
+              string,
+              unknown
+            >,
+          )
+        : [];
+
     const hasAccessToken =
       Boolean(
         tokens.access_token,
@@ -108,6 +144,9 @@ export async function GET(
         hasAccessToken,
         hasRefreshToken,
         hasOpenId,
+
+        rootKeys,
+        dataKeys,
 
         accessTokenLength:
           tokens.access_token
@@ -137,8 +176,7 @@ export async function GET(
     );
 
     /*
-     * 111 signifie :
-     *
+     * 111 =
      * access_token présent
      * refresh_token présent
      * open_id présent
@@ -148,13 +186,32 @@ export async function GET(
       `${hasAccessToken ? "1" : "0"}${hasRefreshToken ? "1" : "0"}${hasOpenId ? "1" : "0"}`,
     );
 
+    /*
+     * Diagnostic temporaire.
+     *
+     * On affiche uniquement
+     * les noms des champs.
+     */
+    url.searchParams.set(
+      "root_keys",
+      rootKeys.join(",") ||
+        "none",
+    );
+
+    url.searchParams.set(
+      "data_keys",
+      dataKeys.join(",") ||
+        "none",
+    );
+
     const response =
       NextResponse.redirect(
         url,
       );
 
     /*
-     * Cookie témoin du callback.
+     * Cookie témoin créé depuis
+     * le callback OAuth.
      */
     response.cookies.set(
       "tiktok_callback_test",
@@ -170,49 +227,61 @@ export async function GET(
     /*
      * Cookies TikTok.
      */
-    response.cookies.set(
-      "tiktok_access_token",
-      tokens.access_token,
-      {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        path: "/",
-      },
-    );
+    if (tokens.access_token) {
+      response.cookies.set(
+        "tiktok_access_token",
+        tokens.access_token,
+        {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          path: "/",
+        },
+      );
+    }
 
-    response.cookies.set(
-      "tiktok_refresh_token",
-      tokens.refresh_token,
-      {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        path: "/",
-      },
-    );
+    if (tokens.refresh_token) {
+      response.cookies.set(
+        "tiktok_refresh_token",
+        tokens.refresh_token,
+        {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          path: "/",
+        },
+      );
+    }
 
-    response.cookies.set(
-      "tiktok_open_id",
-      tokens.open_id,
-      {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        path: "/",
-      },
-    );
+    if (tokens.open_id) {
+      response.cookies.set(
+        "tiktok_open_id",
+        tokens.open_id,
+        {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          path: "/",
+        },
+      );
+    }
 
-    response.cookies.set(
-      "tiktok_connected",
-      "1",
-      {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        path: "/",
-      },
-    );
+    if (
+      hasAccessToken &&
+      hasRefreshToken &&
+      hasOpenId
+    ) {
+      response.cookies.set(
+        "tiktok_connected",
+        "1",
+        {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          path: "/",
+        },
+      );
+    }
 
     response.cookies.delete(
       "tiktok_oauth_state",

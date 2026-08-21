@@ -7,8 +7,7 @@ import {
   exchangeTikTokCode,
 } from "@/services/tiktok.service";
 
-export const dynamic =
-  "force-dynamic";
+export const dynamic = "force-dynamic";
 
 const APP_URL =
   "https://klarys-ai-os-alpha.vercel.app";
@@ -26,9 +25,7 @@ function redirectWithError(
     message,
   );
 
-  return NextResponse.redirect(
-    url,
-  );
+  return NextResponse.redirect(url);
 }
 
 export async function GET(
@@ -56,8 +53,7 @@ export async function GET(
 
   if (error) {
     return redirectWithError(
-      errorDescription ??
-        error,
+      errorDescription ?? error,
     );
   }
 
@@ -84,23 +80,39 @@ export async function GET(
 
   try {
     const tokens =
-      await exchangeTikTokCode(
-        code,
-      );
+      await exchangeTikTokCode(code);
 
-      console.log("TIKTOK TOKEN DEBUG", {
-  hasAccessToken: Boolean(tokens.access_token),
-  hasRefreshToken: Boolean(tokens.refresh_token),
-  hasOpenId: Boolean(tokens.open_id),
-  accessTokenLength:
-    tokens.access_token?.length ?? 0,
-  refreshTokenLength:
-    tokens.refresh_token?.length ?? 0,
-  openId:
-    tokens.open_id ?? null,
-  scope:
-    tokens.scope ?? null,
-});
+    const hasAccessToken =
+      Boolean(tokens.access_token);
+
+    const hasRefreshToken =
+      Boolean(tokens.refresh_token);
+
+    const hasOpenId =
+      Boolean(tokens.open_id);
+
+    console.log(
+      "TIKTOK TOKEN DEBUG",
+      {
+        hasAccessToken,
+        hasRefreshToken,
+        hasOpenId,
+
+        accessTokenLength:
+          tokens.access_token?.length ??
+          0,
+
+        refreshTokenLength:
+          tokens.refresh_token?.length ??
+          0,
+
+        openIdLength:
+          tokens.open_id?.length ?? 0,
+
+        scope:
+          tokens.scope ?? null,
+      },
+    );
 
     const url = new URL(
       "/reseaux-sociaux/tiktok",
@@ -112,18 +124,37 @@ export async function GET(
       "1",
     );
 
+    /*
+     * Diagnostic temporaire.
+     *
+     * 111 = access token,
+     * refresh token et open_id
+     * reçus correctement.
+     *
+     * Aucun secret n'est exposé.
+     */
+    url.searchParams.set(
+      "token_debug",
+      `${hasAccessToken ? "1" : "0"}${hasRefreshToken ? "1" : "0"}${hasOpenId ? "1" : "0"}`,
+    );
+
     const response =
-      NextResponse.redirect(
-        url,
-      );
+      NextResponse.redirect(url);
 
     /*
-     * Cookies de session TikTok.
-     *
-     * Pas de maxAge pour le moment :
-     * ils restent actifs pendant
-     * la session navigateur.
+     * Petit cookie témoin créé
+     * exactement depuis le callback.
      */
+    response.cookies.set(
+      "tiktok_callback_test",
+      "1",
+      {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+      },
+    );
 
     response.cookies.set(
       "tiktok_access_token",
@@ -157,11 +188,6 @@ export async function GET(
         path: "/",
       },
     );
-
-    /*
-     * Petit indicateur de connexion.
-     * Aucun token n'est exposé.
-     */
 
     response.cookies.set(
       "tiktok_connected",

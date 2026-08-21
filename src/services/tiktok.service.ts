@@ -50,12 +50,16 @@ export function buildTikTokAuthorizeUrl(
     new URLSearchParams({
       client_key:
         getTikTokClientKey(),
+
       response_type:
         "code",
+
       scope:
         TIKTOK_SCOPES.join(","),
+
       redirect_uri:
         TIKTOK_REDIRECT_URI,
+
       state,
     });
 
@@ -88,11 +92,15 @@ export async function exchangeTikTokCode(
     new URLSearchParams({
       client_key:
         getTikTokClientKey(),
+
       client_secret:
         getTikTokClientSecret(),
+
       code,
+
       grant_type:
         "authorization_code",
+
       redirect_uri:
         TIKTOK_REDIRECT_URI,
     });
@@ -121,9 +129,80 @@ export async function exchangeTikTokCode(
   const data =
     await response.json();
 
+  /*
+   * DIAGNOSTIC TEMPORAIRE
+   *
+   * On affiche uniquement
+   * la structure de la réponse.
+   *
+   * Aucun token ni secret
+   * n'est affiché.
+   */
+  console.log(
+    "TIKTOK RAW RESPONSE DEBUG",
+    {
+      httpStatus:
+        response.status,
+
+      responseOk:
+        response.ok,
+
+      rootKeys:
+        data &&
+        typeof data === "object"
+          ? Object.keys(data)
+          : [],
+
+      hasAccessToken:
+        Boolean(
+          data?.access_token,
+        ),
+
+      hasRefreshToken:
+        Boolean(
+          data?.refresh_token,
+        ),
+
+      hasOpenId:
+        Boolean(
+          data?.open_id,
+        ),
+
+      hasDataObject:
+        Boolean(
+          data?.data &&
+            typeof data.data ===
+              "object",
+        ),
+
+      dataKeys:
+        data?.data &&
+        typeof data.data ===
+          "object"
+          ? Object.keys(
+              data.data,
+            )
+          : [],
+
+      errorType:
+        typeof data?.error,
+
+      errorCode:
+        data?.error?.code ??
+        data?.error_code ??
+        null,
+
+      errorMessage:
+        data?.error?.message ??
+        data?.error_description ??
+        null,
+    },
+  );
+
   if (!response.ok) {
     throw new Error(
-      data?.error_description ??
+      data?.error?.message ??
+        data?.error_description ??
         data?.error ??
         "TikTok token exchange failed.",
     );

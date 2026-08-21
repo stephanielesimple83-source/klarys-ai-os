@@ -7,7 +7,8 @@ import {
   exchangeTikTokCode,
 } from "@/services/tiktok.service";
 
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
 const APP_URL =
   "https://klarys-ai-os-alpha.vercel.app";
@@ -25,7 +26,9 @@ function redirectWithError(
     message,
   );
 
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(
+    url,
+  );
 }
 
 export async function GET(
@@ -80,16 +83,24 @@ export async function GET(
 
   try {
     const tokens =
-      await exchangeTikTokCode(code);
+      await exchangeTikTokCode(
+        code,
+      );
 
     const hasAccessToken =
-      Boolean(tokens.access_token);
+      Boolean(
+        tokens.access_token,
+      );
 
     const hasRefreshToken =
-      Boolean(tokens.refresh_token);
+      Boolean(
+        tokens.refresh_token,
+      );
 
     const hasOpenId =
-      Boolean(tokens.open_id);
+      Boolean(
+        tokens.open_id,
+      );
 
     console.log(
       "TIKTOK TOKEN DEBUG",
@@ -99,15 +110,16 @@ export async function GET(
         hasOpenId,
 
         accessTokenLength:
-          tokens.access_token?.length ??
-          0,
+          tokens.access_token
+            ?.length ?? 0,
 
         refreshTokenLength:
-          tokens.refresh_token?.length ??
-          0,
+          tokens.refresh_token
+            ?.length ?? 0,
 
         openIdLength:
-          tokens.open_id?.length ?? 0,
+          tokens.open_id
+            ?.length ?? 0,
 
         scope:
           tokens.scope ?? null,
@@ -125,13 +137,11 @@ export async function GET(
     );
 
     /*
-     * Diagnostic temporaire.
+     * 111 signifie :
      *
-     * 111 = access token,
-     * refresh token et open_id
-     * reçus correctement.
-     *
-     * Aucun secret n'est exposé.
+     * access_token présent
+     * refresh_token présent
+     * open_id présent
      */
     url.searchParams.set(
       "token_debug",
@@ -139,11 +149,12 @@ export async function GET(
     );
 
     const response =
-      NextResponse.redirect(url);
+      NextResponse.redirect(
+        url,
+      );
 
     /*
-     * Petit cookie témoin créé
-     * exactement depuis le callback.
+     * Cookie témoin du callback.
      */
     response.cookies.set(
       "tiktok_callback_test",
@@ -156,6 +167,9 @@ export async function GET(
       },
     );
 
+    /*
+     * Cookies TikTok.
+     */
     response.cookies.set(
       "tiktok_access_token",
       tokens.access_token,

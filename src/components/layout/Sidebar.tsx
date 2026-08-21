@@ -28,11 +28,9 @@ const navigation = [
     href: "/wix",
   },
   {
-   {
-  label: "Réseaux sociaux",
-  icon: Megaphone,
-  href: "/reseaux-sociaux/tiktok",
-},
+    label: "Réseaux sociaux",
+    icon: Megaphone,
+    href: "/reseaux-sociaux/tiktok",
   },
   {
     label: "CEO AI",
@@ -42,8 +40,7 @@ const navigation = [
 ];
 
 export default function Sidebar() {
-  const pathname =
-    usePathname();
+  const pathname = usePathname();
 
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-slate-800 bg-slate-950 lg:flex lg:flex-col">
@@ -59,15 +56,12 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-2 px-4 py-6">
         {navigation.map((item) => {
-          const Icon =
-            item.icon;
+          const Icon = item.icon;
 
           const active =
             item.href === "/"
               ? pathname === "/"
-              : pathname.startsWith(
-                  item.href,
-                );
+              : pathname.startsWith(item.href);
 
           return (
             <a
@@ -81,9 +75,7 @@ export default function Sidebar() {
             >
               <Icon className="h-5 w-5" />
 
-              <span>
-                {item.label}
-              </span>
+              <span>{item.label}</span>
             </a>
           );
         })}
@@ -96,9 +88,7 @@ export default function Sidebar() {
         >
           <Settings className="h-5 w-5" />
 
-          <span>
-            Paramètres
-          </span>
+          <span>Paramètres</span>
         </a>
       </div>
     </aside>

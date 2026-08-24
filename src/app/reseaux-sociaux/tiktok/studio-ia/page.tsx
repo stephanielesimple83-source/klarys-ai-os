@@ -23,6 +23,20 @@ type AIResponse = {
   error?: string;
 };
 
+type VideoStartResponse = {
+  success?: boolean;
+  taskId?: string;
+  error?: string;
+};
+
+type VideoStatusResponse = {
+  success?: boolean;
+  taskId?: string;
+  status?: string;
+  videoUrl?: string | null;
+  error?: string;
+};
+
 const contentTypes = [
   {
     title: "Tirage du jour",
@@ -70,23 +84,62 @@ const tones = [
   "Pédagogique et professionnel",
 ];
 
+function wait(
+  milliseconds: number,
+) {
+  return new Promise(
+    (resolve) =>
+      setTimeout(
+        resolve,
+        milliseconds,
+      ),
+  );
+}
+
+function getVideoStatusLabel(
+  status: string,
+) {
+  switch (status) {
+    case "PENDING":
+      return "En attente";
+
+    case "RUNNING":
+      return "Création de la vidéo en cours";
+
+    case "SUCCEEDED":
+      return "Vidéo terminée";
+
+    case "FAILED":
+      return "La génération a échoué";
+
+    case "CANCELED":
+      return "Génération annulée";
+
+    default:
+      return status;
+  }
+}
+
 export default function TikTokAIStudioPage() {
   const [
     selectedType,
     setSelectedType,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     subject,
     setSubject,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     tone,
     setTone,
-  ] = useState(
-    "Naturel et chaleureux",
-  );
+  ] =
+    useState(
+      "Naturel et chaleureux",
+    );
 
   const [
     generated,
@@ -99,12 +152,44 @@ export default function TikTokAIStudioPage() {
   const [
     loading,
     setLoading,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     error,
     setError,
-  ] = useState("");
+  ] =
+    useState("");
+
+  const [
+    videoLoading,
+    setVideoLoading,
+  ] =
+    useState(false);
+
+  const [
+    videoError,
+    setVideoError,
+  ] =
+    useState("");
+
+  const [
+    videoTaskId,
+    setVideoTaskId,
+  ] =
+    useState("");
+
+  const [
+    videoStatus,
+    setVideoStatus,
+  ] =
+    useState("");
+
+  const [
+    videoUrl,
+    setVideoUrl,
+  ] =
+    useState("");
 
   async function generateContent() {
     if (!selectedType) {
@@ -119,6 +204,11 @@ export default function TikTokAIStudioPage() {
     setError("");
     setGenerated(null);
 
+    setVideoUrl("");
+    setVideoStatus("");
+    setVideoTaskId("");
+    setVideoError("");
+
     try {
       const response =
         await fetch(
@@ -131,14 +221,15 @@ export default function TikTokAIStudioPage() {
                 "application/json",
             },
 
-            body: JSON.stringify({
-              contentType:
-                selectedType,
+            body:
+              JSON.stringify({
+                contentType:
+                  selectedType,
 
-              subject,
+                subject,
 
-              tone,
-            }),
+                tone,
+              }),
           },
         );
 
@@ -173,9 +264,267 @@ export default function TikTokAIStudioPage() {
   function chooseType(
     title: string,
   ) {
-    setSelectedType(title);
+    setSelectedType(
+      title,
+    );
+
     setGenerated(null);
     setError("");
+
+    setVideoUrl("");
+    setVideoStatus("");
+    setVideoTaskId("");
+    setVideoError("");
+  }
+
+  async function checkVideoStatus(
+    taskId: string,
+  ) {
+    const response =
+      await fetch(
+        "/api/ai/video/status",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body:
+            JSON.stringify({
+              taskId,
+            }),
+        },
+      );
+
+    const data:
+      VideoStatusResponse =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+      throw new Error(
+        data.error ||
+          "Impossible de récupérer le statut de la vidéo.",
+      );
+    }
+
+    return data;
+  }
+
+  async function createVideo() {
+    if (!generated) {
+      setVideoError(
+        "Génère d'abord le contenu.",
+      );
+
+      return;
+    }
+
+    setVideoLoading(true);
+    setVideoError("");
+    setVideoUrl("");
+    setVideoStatus(
+      "INITIALIZING",
+    );
+
+    try {
+      /*
+       * Pour le premier prototype,
+       * Runway crée un clip visuel
+       * vertical de 5 secondes.
+       *
+       * On n'essaie pas encore
+       * d'intégrer voix, sous-titres
+       * ou montage automatique.
+       */
+      const videoPrompt = `
+Vertical cinematic TikTok video, 9:16.
+
+Theme:
+${generated.title}
+
+Visual direction:
+${generated.visualIdea}
+
+Mood:
+${tone}
+
+Opening idea:
+${generated.hook}
+
+Create a visually elegant, natural and engaging scene.
+Smooth realistic movement.
+Professional social media aesthetic.
+No logos.
+No subtitles.
+No readable text inside the generated image.
+No watermark.
+      `.trim();
+
+      const response =
+        await fetch(
+          "/api/ai/video",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                prompt:
+                  videoPrompt,
+              }),
+          },
+        );
+
+      const data:
+        VideoStartResponse =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success ||
+        !data.taskId
+      ) {
+        throw new Error(
+          data.error ||
+            "Runway n'a pas pu démarrer la génération.",
+        );
+      }
+
+      const taskId =
+        data.taskId;
+
+      setVideoTaskId(
+        taskId,
+      );
+
+      setVideoStatus(
+        "PENDING",
+      );
+
+      /*
+       * Runway fonctionne de façon
+       * asynchrone.
+       *
+       * On attend 6 secondes entre
+       * chaque vérification.
+       */
+      for (
+        let attempt = 0;
+        attempt < 25;
+        attempt++
+      ) {
+        await wait(6000);
+
+        const statusData =
+          await checkVideoStatus(
+            taskId,
+          );
+
+        const currentStatus =
+          statusData.status ??
+          "UNKNOWN";
+
+        setVideoStatus(
+          currentStatus,
+        );
+
+        if (
+          currentStatus ===
+          "SUCCEEDED"
+        ) {
+          if (
+            !statusData.videoUrl
+          ) {
+            throw new Error(
+              "Runway a terminé la vidéo mais aucune URL n'a été retournée.",
+            );
+          }
+
+          setVideoUrl(
+            statusData.videoUrl,
+          );
+
+          return;
+        }
+
+        if (
+          currentStatus ===
+            "FAILED" ||
+          currentStatus ===
+            "CANCELED"
+        ) {
+          throw new Error(
+            currentStatus ===
+              "FAILED"
+              ? "Runway n'a pas réussi à générer la vidéo."
+              : "La génération Runway a été annulée.",
+          );
+        }
+      }
+
+      throw new Error(
+        "La génération prend plus de temps que prévu. Tu pourras relancer la vérification ensuite.",
+      );
+    } catch (error) {
+      setVideoError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de créer la vidéo.",
+      );
+    } finally {
+      setVideoLoading(false);
+    }
+  }
+
+  async function refreshVideoStatus() {
+    if (!videoTaskId) {
+      return;
+    }
+
+    setVideoLoading(true);
+    setVideoError("");
+
+    try {
+      const data =
+        await checkVideoStatus(
+          videoTaskId,
+        );
+
+      const currentStatus =
+        data.status ??
+        "UNKNOWN";
+
+      setVideoStatus(
+        currentStatus,
+      );
+
+      if (
+        currentStatus ===
+          "SUCCEEDED" &&
+        data.videoUrl
+      ) {
+        setVideoUrl(
+          data.videoUrl,
+        );
+      }
+    } catch (error) {
+      setVideoError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de vérifier la vidéo.",
+      );
+    } finally {
+      setVideoLoading(false);
+    }
   }
 
   return (
@@ -192,12 +541,10 @@ export default function TikTokAIStudioPage() {
             </h1>
 
             <p className="mt-3 max-w-3xl text-slate-400">
-              Prépare tes contenus
-              TikTok avec
-              l&apos;IA : accroche,
-              script, texte à
-              l&apos;écran, légende
-              et hashtags.
+              Prépare ton contenu
+              puis transforme-le en
+              vidéo verticale avec
+              l&apos;IA.
             </p>
           </div>
 
@@ -330,13 +677,6 @@ export default function TikTokAIStudioPage() {
                 className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400"
                 placeholder="Exemple : un message sur les personnes qui traversent une période de doute..."
               />
-
-              <p className="mt-2 text-xs text-slate-500">
-                Tu peux aussi
-                laisser vide :
-                l&apos;IA choisira
-                elle-même une idée.
-              </p>
             </div>
 
             <div className="mt-5">
@@ -456,8 +796,7 @@ export default function TikTokAIStudioPage() {
 
             <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950 p-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
-                Texte à
-                l&apos;écran
+                Texte à l&apos;écran
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -505,7 +844,121 @@ export default function TikTokAIStudioPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-7 rounded-3xl border border-violet-500/30 bg-violet-500/5 p-6">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-violet-300">
+                Étape 3
+              </p>
+
+              <h3 className="mt-2 text-xl font-bold">
+                Créer la vidéo avec
+                l&apos;IA
+              </h3>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                Runway va maintenant
+                transformer l&apos;idée
+                visuelle en un premier
+                clip vertical de test de
+                5 secondes.
+              </p>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={
+                    createVideo
+                  }
+                  disabled={
+                    videoLoading
+                  }
+                  className="rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {videoLoading
+                    ? "🎬 Création en cours..."
+                    : "🎬 Créer la vidéo avec l'IA"}
+                </button>
+
+                {videoTaskId &&
+                  !videoLoading &&
+                  !videoUrl && (
+                    <button
+                      type="button"
+                      onClick={
+                        refreshVideoStatus
+                      }
+                      className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+                    >
+                      Actualiser le statut
+                    </button>
+                  )}
+              </div>
+
+              {videoStatus && (
+                <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950 p-5">
+                  <p className="text-xs uppercase tracking-wider text-slate-500">
+                    Statut vidéo
+                  </p>
+
+                  <p className="mt-2 font-semibold text-violet-300">
+                    {getVideoStatusLabel(
+                      videoStatus,
+                    )}
+                  </p>
+
+                  {videoTaskId && (
+                    <p className="mt-2 break-all text-xs text-slate-600">
+                      Task ID :{" "}
+                      {videoTaskId}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {videoError && (
+                <div className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                  <p className="text-sm text-rose-200">
+                    {videoError}
+                  </p>
+                </div>
+              )}
+
+              {videoUrl && (
+                <div className="mt-6">
+                  <p className="mb-3 text-sm font-semibold text-emerald-300">
+                    ✓ Vidéo IA terminée
+                  </p>
+
+                  <div className="mx-auto max-w-sm overflow-hidden rounded-3xl border border-slate-700 bg-black">
+                    <video
+                      src={videoUrl}
+                      controls
+                      playsInline
+                      className="aspect-[9/16] w-full object-contain"
+                    />
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap justify-center gap-3">
+                    <a
+                      href={videoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+                    >
+                      Voir la vidéo
+                    </a>
+
+                    <Link
+                      href="/reseaux-sociaux/tiktok"
+                      className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                    >
+                      Continuer vers TikTok →
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6">
               <button
                 type="button"
                 onClick={
@@ -514,15 +967,8 @@ export default function TikTokAIStudioPage() {
                 disabled={loading}
                 className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-5 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20"
               >
-                🔄 Régénérer
+                🔄 Régénérer le contenu
               </button>
-
-              <Link
-                href="/reseaux-sociaux/tiktok"
-                className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-              >
-                Continuer vers TikTok →
-              </Link>
             </div>
           </section>
         )}

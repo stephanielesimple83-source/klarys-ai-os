@@ -1,9 +1,8 @@
-
-
-
 "use client";
 
 import Link from "next/link";
+
+import TikTokVideoAssembler from "@/components/tiktok/TikTokVideoAssembler";
 
 import {
   useState,
@@ -352,21 +351,21 @@ export default function TikTokAIStudioPage() {
   }
 
   function buildScenePrompts(
-  content: GeneratedContent,
-) {
-  const text1 =
-    content.screenText?.[0] ??
-    content.hook;
+    content: GeneratedContent,
+  ) {
+    const text1 =
+      content.screenText?.[0] ??
+      content.hook;
 
-  const text2 =
-    content.screenText?.[1] ??
-    content.script;
+    const text2 =
+      content.screenText?.[1] ??
+      content.script;
 
-  const text3 =
-    content.screenText?.[2] ??
-    content.script;
+    const text3 =
+      content.screenText?.[2] ??
+      content.script;
 
-  const visualIdentity = `
+    const visualIdentity = `
 Keep the same overall visual identity across all 4 scenes:
 - same warm cinematic color palette
 - same lighting style
@@ -380,10 +379,10 @@ Keep the same overall visual identity across all 4 scenes:
 - no readable text
 - no watermark
 - avoid repeating the exact same main object or composition from the previous scene
-  `.trim();
+    `.trim();
 
-  return [
-    `
+    return [
+      `
 Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 1 - OPENING ACTION.
@@ -409,9 +408,9 @@ Use a close-up or medium close-up.
 Create strong movement in the first second.
 
 ${visualIdentity}
-    `.trim(),
+      `.trim(),
 
-    `
+      `
 Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 2 - DISCOVERY.
@@ -438,9 +437,9 @@ A candle, notebook or cup may appear only as a secondary background detail.
 The main subject must be different from scene 1.
 
 ${visualIdentity}
-    `.trim(),
+      `.trim(),
 
-    `
+      `
 Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 3 - CENTRAL MESSAGE.
@@ -465,9 +464,9 @@ Use a tighter cinematic frame or a subtle push-in.
 Avoid repeating the same table arrangement, same cup placement or same candle framing used before.
 
 ${visualIdentity}
-    `.trim(),
+      `.trim(),
 
-    `
+      `
 Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 4 - CLOSING ACTION.
@@ -489,9 +488,9 @@ Do not end on another static cup, candle or repeated card close-up.
 The final frame should feel complete and calm.
 
 ${visualIdentity}
-    `.trim(),
-  ];
-}
+      `.trim(),
+    ];
+  }
 
   function updateScene(
     sceneNumber: number,
@@ -1495,6 +1494,26 @@ ${visualIdentity}
                     un seul MP4.
                   </p>
                 </div>
+              )}
+
+              {allScenesFinished && (
+                <TikTokVideoAssembler
+                  videoUrls={
+                    scenes
+                      .sort(
+                        (
+                          first,
+                          second,
+                        ) =>
+                          first.scene -
+                          second.scene,
+                      )
+                      .map(
+                        (scene) =>
+                          scene.videoUrl,
+                      )
+                  }
+                />
               )}
             </div>
 

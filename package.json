@@ -12,6 +12,7 @@
     "@base-ui/react": "^1.6.0",
     "@nestjs/config": "^4.0.4",
     "@tanstack/react-table": "^9.0.0",
+    "@vercel/blob": "^2.8.0",
     "axios": "^1.19.0",
     "axios-cookiejar-support": "^7.0.0",
     "cheerio": "^1.2.0",

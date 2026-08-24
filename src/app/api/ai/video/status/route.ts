@@ -67,7 +67,8 @@ export async function POST(
               RUNWAY_API_VERSION,
           },
 
-          cache: "no-store",
+          cache:
+            "no-store",
         },
       );
 
@@ -78,12 +79,15 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           status:
             response.status,
+
           error:
             data?.message ??
             data?.error ??
             "Impossible de récupérer le statut Runway.",
+
           runway:
             data,
         },
@@ -111,6 +115,78 @@ export async function POST(
         ? output[0]
         : null;
 
+    const failureCode =
+      typeof data?.failureCode ===
+      "string"
+        ? data.failureCode
+        : null;
+
+    const failure =
+      typeof data?.failure ===
+      "string"
+        ? data.failure
+        : null;
+
+    let failureMessage:
+      string | null =
+      null;
+
+    if (
+      status ===
+      "FAILED"
+    ) {
+      if (
+        failureCode?.startsWith(
+          "SAFETY.",
+        ) ||
+        failureCode ===
+          "INPUT_PREPROCESSING.SAFETY.TEXT"
+      ) {
+        failureMessage =
+          "Runway a refusé cette scène pour des raisons de modération du contenu.";
+      } else if (
+        failureCode?.startsWith(
+          "INTERNAL.BAD_OUTPUT",
+        )
+      ) {
+        failureMessage =
+          "Runway a rejeté le rendu généré. Le prompt devra être légèrement simplifié ou reformulé.";
+      } else if (
+        failureCode ===
+        "INPUT_PREPROCESSING.INTERNAL"
+      ) {
+        failureMessage =
+          "Runway a rencontré un problème temporaire pendant l'analyse du prompt.";
+      } else if (
+        failureCode ===
+        "THIRD_PARTY.UNAVAILABLE"
+      ) {
+        failureMessage =
+          "Le moteur vidéo utilisé par Runway est temporairement indisponible.";
+      } else if (
+        failureCode ===
+        "ASSET.INVALID"
+      ) {
+        failureMessage =
+          "Runway a refusé une ressource utilisée pour la génération.";
+      } else if (
+        failureCode ===
+          "INTERNAL" ||
+        !failureCode
+      ) {
+        failureMessage =
+          "Runway a rencontré une erreur interne pendant la génération.";
+      } else {
+        failureMessage =
+          "Runway n'a pas pu générer cette scène.";
+      }
+
+      if (failure) {
+        failureMessage +=
+          ` Détail : ${failure}`;
+      }
+    }
+
     return NextResponse.json({
       success: true,
 
@@ -119,6 +195,12 @@ export async function POST(
       status,
 
       videoUrl,
+
+      failureCode,
+
+      failure,
+
+      failureMessage,
 
       runway:
         data,
@@ -132,6 +214,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
+
         error:
           message,
       },

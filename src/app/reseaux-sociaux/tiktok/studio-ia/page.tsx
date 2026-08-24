@@ -1513,6 +1513,10 @@ ${visualIdentity}
                           scene.videoUrl,
                       )
                   }
+                  overlayTexts={[
+                    generated.hook,
+                    ...generated.screenText,
+                  ]}
                 />
               )}
             </div>

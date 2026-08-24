@@ -23,20 +23,10 @@ type AIResponse = {
   error?: string;
 };
 
-type VideoTask = {
-  scene: number;
-  taskId: string;
-  estimatedCost?: unknown;
-};
-
 type VideoStartResponse = {
   success?: boolean;
-  mode?: "single" | "multi-scene";
   taskId?: string;
-  sceneCount?: number;
-  sceneDuration?: number;
-  totalDuration?: number;
-  tasks?: VideoTask[];
+  duration?: number;
   error?: string;
 };
 
@@ -50,6 +40,7 @@ type VideoStatusResponse = {
 
 type SceneState = {
   scene: number;
+  title: string;
   taskId: string;
   status: string;
   videoUrl: string;
@@ -118,11 +109,14 @@ function getVideoStatusLabel(
   status: string,
 ) {
   switch (status) {
+    case "WAITING":
+      return "En attente";
+
     case "INITIALIZING":
       return "Initialisation";
 
     case "PENDING":
-      return "En attente";
+      return "En attente Runway";
 
     case "RUNNING":
       return "Création en cours";
@@ -131,17 +125,20 @@ function getVideoStatusLabel(
       return "Vidéo terminée";
 
     case "FAILED":
-      return "La génération a échoué";
+      return "Échec";
 
     case "CANCELED":
-      return "Génération annulée";
+      return "Annulée";
+
+    case "THROTTLED":
+      return "Limitation Runway";
 
     default:
       return status;
   }
 }
 
-function sceneTitle(
+function getSceneTitle(
   scene: number,
 ) {
   switch (scene) {
@@ -223,6 +220,12 @@ export default function TikTokAIStudioPage() {
       [],
     );
 
+  const [
+    currentScene,
+    setCurrentScene,
+  ] =
+    useState(0);
+
   async function generateContent() {
     if (!selectedType) {
       setError(
@@ -237,6 +240,7 @@ export default function TikTokAIStudioPage() {
     setGenerated(null);
 
     setScenes([]);
+    setCurrentScene(0);
     setVideoError("");
 
     try {
@@ -302,6 +306,7 @@ export default function TikTokAIStudioPage() {
     setError("");
 
     setScenes([]);
+    setCurrentScene(0);
     setVideoError("");
   }
 
@@ -360,39 +365,9 @@ export default function TikTokAIStudioPage() {
 
     return [
       `
-Vertical cinematic TikTok video, 9:16.
+Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 1 - OPENING HOOK.
-
-Theme:
-${content.title}
-
-Main visual direction:
-${content.visualIdea}
-
-Opening mood:
-${tone}
-
-Concept:
-${content.hook}
-
-Visual inspiration:
-${text1}
-
-Create an immediate, elegant and visually striking opening.
-Strong first-second visual impact.
-Smooth realistic movement.
-Professional social media aesthetic.
-No logos.
-No subtitles.
-No readable text.
-No watermark.
-      `.trim(),
-
-      `
-Vertical cinematic TikTok video, 9:16.
-
-SCENE 2 - DEVELOPMENT.
 
 Theme:
 ${content.title}
@@ -403,16 +378,48 @@ ${content.visualIdea}
 Mood:
 ${tone}
 
-Story context:
+Opening idea:
+${content.hook}
+
+Visual inspiration:
+${text1}
+
+Create an immediate and elegant opening.
+Strong visual impact in the first second.
+Smooth realistic movement.
+Natural cinematic lighting.
+Professional social media aesthetic.
+Keep visual continuity suitable for a four-scene sequence.
+No logos.
+No subtitles.
+No readable text.
+No watermark.
+      `.trim(),
+
+      `
+Vertical cinematic TikTok video, portrait 9:16.
+
+SCENE 2 - DEVELOPMENT.
+
+Theme:
+${content.title}
+
+Main visual direction:
+${content.visualIdea}
+
+Mood:
+${tone}
+
+Story:
 ${content.script}
 
 Visual inspiration:
 ${text2}
 
-Continue naturally from the opening.
-Create a calm but engaging progression.
+Continue the same visual universe as scene 1.
+Create a natural progression.
 Elegant camera movement.
-Atmospheric details.
+Warm atmospheric details.
 Professional TikTok aesthetic.
 No logos.
 No subtitles.
@@ -421,29 +428,30 @@ No watermark.
       `.trim(),
 
       `
-Vertical cinematic TikTok video, 9:16.
+Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 3 - CENTRAL MESSAGE.
 
 Theme:
 ${content.title}
 
-Visual direction:
+Main visual direction:
 ${content.visualIdea}
 
 Mood:
 ${tone}
 
-Central idea:
+Central message:
 ${content.script}
 
 Visual inspiration:
 ${text3}
 
-Create the strongest emotional or symbolic moment of the sequence.
+Create the strongest symbolic or emotional moment.
+Maintain visual continuity with the previous scenes.
 Natural cinematic movement.
-Visually rich but not overloaded.
-Professional social media aesthetic.
+Elegant composition.
+Not overloaded.
 No logos.
 No subtitles.
 No readable text.
@@ -451,14 +459,14 @@ No watermark.
       `.trim(),
 
       `
-Vertical cinematic TikTok video, 9:16.
+Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 4 - CONCLUSION.
 
 Theme:
 ${content.title}
 
-Visual direction:
+Main visual direction:
 ${content.visualIdea}
 
 Mood:
@@ -467,10 +475,10 @@ ${tone}
 Closing message:
 ${content.caption}
 
-Create a satisfying visual conclusion.
-Gentle cinematic ending.
-Elegant movement.
-Leave a calm memorable final impression.
+Create a gentle and memorable ending.
+Maintain continuity with the previous scenes.
+Elegant final movement.
+Calm satisfying conclusion.
 Professional TikTok aesthetic.
 No logos.
 No subtitles.
@@ -480,25 +488,118 @@ No watermark.
     ];
   }
 
-  async function createVideo() {
-    if (!generated) {
-      setVideoError(
-        "Génère d'abord le contenu.",
-      );
+  function updateScene(
+    sceneNumber: number,
+    changes: Partial<SceneState>,
+  ) {
+    setScenes(
+      (previous) =>
+        previous.map(
+          (scene) =>
+            scene.scene ===
+            sceneNumber
+              ? {
+                  ...scene,
+                  ...changes,
+                }
+              : scene,
+        ),
+    );
+  }
 
-      return;
-    }
+  async function waitForSceneCompletion(
+    sceneNumber: number,
+    taskId: string,
+  ) {
+    for (
+      let attempt = 0;
+      attempt < 35;
+      attempt++
+    ) {
+      await wait(6000);
 
-    setVideoLoading(true);
-    setVideoError("");
-    setScenes([]);
-
-    try {
-      const prompts =
-        buildScenePrompts(
-          generated,
+      const statusData =
+        await checkVideoStatus(
+          taskId,
         );
 
+      const status =
+        statusData.status ??
+        "UNKNOWN";
+
+      updateScene(
+        sceneNumber,
+        {
+          status,
+
+          videoUrl:
+            statusData.videoUrl ??
+            "",
+        },
+      );
+
+      if (
+        status ===
+        "SUCCEEDED"
+      ) {
+        if (
+          !statusData.videoUrl
+        ) {
+          throw new Error(
+            `La scène ${sceneNumber} est terminée mais aucune vidéo n'a été retournée.`,
+          );
+        }
+
+        return statusData.videoUrl;
+      }
+
+      if (
+        status ===
+          "FAILED" ||
+        status ===
+          "CANCELED"
+      ) {
+        throw new Error(
+          `La scène ${sceneNumber} n'a pas pu être générée.`,
+        );
+      }
+
+      if (
+        status ===
+        "THROTTLED"
+      ) {
+        await wait(8000);
+      }
+    }
+
+    throw new Error(
+      `La scène ${sceneNumber} prend plus de temps que prévu.`,
+    );
+  }
+
+  async function startOneScene(
+    sceneNumber: number,
+    prompt: string,
+  ) {
+    setCurrentScene(
+      sceneNumber,
+    );
+
+    updateScene(
+      sceneNumber,
+      {
+        status:
+          "INITIALIZING",
+      },
+    );
+
+    let lastError = "";
+
+    for (
+      let attempt = 0;
+      attempt < 4;
+      attempt++
+    ) {
       const response =
         await fetch(
           "/api/ai/video",
@@ -512,7 +613,7 @@ No watermark.
 
             body:
               JSON.stringify({
-                prompts,
+                prompt,
               }),
           },
         );
@@ -522,140 +623,153 @@ No watermark.
         await response.json();
 
       if (
-        !response.ok ||
-        !data.success
+        response.ok &&
+        data.success &&
+        data.taskId
       ) {
-        throw new Error(
-          data.error ||
-            "Runway n'a pas pu démarrer la génération.",
-        );
-      }
+        const taskId =
+          data.taskId;
 
-      if (
-        !Array.isArray(
-          data.tasks,
-        ) ||
-        data.tasks.length === 0
-      ) {
-        throw new Error(
-          "Runway n'a retourné aucune scène.",
-        );
-      }
-
-      let currentScenes:
-        SceneState[] =
-        data.tasks.map(
-          (task) => ({
-            scene:
-              task.scene,
-
-            taskId:
-              task.taskId,
-
+        updateScene(
+          sceneNumber,
+          {
+            taskId,
             status:
               "PENDING",
-
-            videoUrl:
-              "",
-          }),
+          },
         );
 
-      setScenes(
-        currentScenes,
+        return taskId;
+      }
+
+      lastError =
+        data.error ||
+        "Runway a refusé la génération.";
+
+      const isThrottle =
+        response.status ===
+          429 ||
+        lastError
+          .toLowerCase()
+          .includes(
+            "thrott",
+          ) ||
+        lastError
+          .toLowerCase()
+          .includes(
+            "rate",
+          );
+
+      if (
+        !isThrottle
+      ) {
+        throw new Error(
+          lastError,
+        );
+      }
+
+      updateScene(
+        sceneNumber,
+        {
+          status:
+            "THROTTLED",
+        },
       );
 
-      /*
-       * On surveille les 4 scènes.
-       *
-       * Une vérification environ
-       * toutes les 6 secondes.
-       */
-      for (
-        let attempt = 0;
-        attempt < 30;
-        attempt++
-      ) {
-        await wait(6000);
+      await wait(
+        10000,
+      );
+    }
 
-        const updatedScenes =
-          await Promise.all(
-            currentScenes.map(
-              async (
-                scene,
-              ) => {
-                if (
-                  scene.status ===
-                    "SUCCEEDED" ||
-                  scene.status ===
-                    "FAILED" ||
-                  scene.status ===
-                    "CANCELED"
-                ) {
-                  return scene;
-                }
+    throw new Error(
+      lastError ||
+        `Impossible de démarrer la scène ${sceneNumber}.`,
+    );
+  }
 
-                const statusData =
-                  await checkVideoStatus(
-                    scene.taskId,
-                  );
+  async function createVideo() {
+    if (!generated) {
+      setVideoError(
+        "Génère d'abord le contenu.",
+      );
 
-                return {
-                  ...scene,
+      return;
+    }
 
-                  status:
-                    statusData.status ??
-                    "UNKNOWN",
+    setVideoLoading(true);
+    setVideoError("");
+    setCurrentScene(1);
 
-                  videoUrl:
-                    statusData.videoUrl ??
-                    "",
-                };
-              },
+    const prompts =
+      buildScenePrompts(
+        generated,
+      );
+
+    const initialScenes:
+      SceneState[] =
+      prompts.map(
+        (
+          _prompt,
+          index,
+        ) => ({
+          scene:
+            index + 1,
+
+          title:
+            getSceneTitle(
+              index + 1,
             ),
+
+          taskId:
+            "",
+
+          status:
+            "WAITING",
+
+          videoUrl:
+            "",
+        }),
+      );
+
+    setScenes(
+      initialScenes,
+    );
+
+    try {
+      for (
+        let index = 0;
+        index < prompts.length;
+        index++
+      ) {
+        const sceneNumber =
+          index + 1;
+
+        const taskId =
+          await startOneScene(
+            sceneNumber,
+            prompts[index],
           );
 
-        currentScenes =
-          updatedScenes;
-
-        setScenes(
-          updatedScenes,
+        await waitForSceneCompletion(
+          sceneNumber,
+          taskId,
         );
 
-        const failed =
-          updatedScenes.find(
-            (scene) =>
-              scene.status ===
-                "FAILED" ||
-              scene.status ===
-                "CANCELED",
+        if (
+          sceneNumber < 4
+        ) {
+          await wait(
+            8000,
           );
-
-        if (failed) {
-          throw new Error(
-            `La scène ${failed.scene} n'a pas pu être générée.`,
-          );
-        }
-
-        const allFinished =
-          updatedScenes.every(
-            (scene) =>
-              scene.status ===
-              "SUCCEEDED",
-          );
-
-        if (allFinished) {
-          return;
         }
       }
 
-      throw new Error(
-        "La génération prend plus de temps que prévu. Tu peux actualiser les statuts ensuite.",
-      );
+      setCurrentScene(0);
     } catch (error) {
       setVideoError(
         error instanceof Error
           ? error.message
-          : "Impossible de créer les vidéos.",
+          : "Impossible de créer la vidéo.",
       );
     } finally {
       setVideoLoading(false);
@@ -673,47 +787,50 @@ No watermark.
     setVideoError("");
 
     try {
-      const updatedScenes =
-        await Promise.all(
-          scenes.map(
-            async (
-              scene,
-            ) => {
-              if (
-                scene.status ===
-                "SUCCEEDED"
-              ) {
-                return scene;
-              }
+      const updated:
+        SceneState[] = [];
 
-              const data =
-                await checkVideoStatus(
-                  scene.taskId,
-                );
+      for (
+        const scene of scenes
+      ) {
+        if (
+          !scene.taskId ||
+          scene.status ===
+            "SUCCEEDED"
+        ) {
+          updated.push(
+            scene,
+          );
 
-              return {
-                ...scene,
+          continue;
+        }
 
-                status:
-                  data.status ??
-                  "UNKNOWN",
+        const data =
+          await checkVideoStatus(
+            scene.taskId,
+          );
 
-                videoUrl:
-                  data.videoUrl ??
-                  scene.videoUrl,
-              };
-            },
-          ),
-        );
+        updated.push({
+          ...scene,
+
+          status:
+            data.status ??
+            scene.status,
+
+          videoUrl:
+            data.videoUrl ??
+            scene.videoUrl,
+        });
+      }
 
       setScenes(
-        updatedScenes,
+        updated,
       );
     } catch (error) {
       setVideoError(
         error instanceof Error
           ? error.message
-          : "Impossible de vérifier les vidéos.",
+          : "Impossible de vérifier les scènes.",
       );
     } finally {
       setVideoLoading(false);
@@ -745,10 +862,11 @@ No watermark.
             </h1>
 
             <p className="mt-3 max-w-3xl text-slate-400">
-              Prépare ton contenu puis
-              transforme-le en une vidéo
-              verticale de 20 secondes
-              composée de 4 scènes IA.
+              Prépare ton contenu
+              puis transforme-le en
+              une vidéo verticale
+              composée de quatre
+              scènes IA.
             </p>
           </div>
 
@@ -796,7 +914,10 @@ No watermark.
                         content.title,
                       )
                     }
-                    className={`group rounded-3xl border p-6 text-left transition ${
+                    disabled={
+                      videoLoading
+                    }
+                    className={`group rounded-3xl border p-6 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
                       selected
                         ? "border-violet-400 bg-violet-500/10"
                         : "border-slate-800 bg-slate-900 hover:border-violet-500/50"
@@ -869,6 +990,9 @@ No watermark.
               <textarea
                 id="subject"
                 value={subject}
+                disabled={
+                  videoLoading
+                }
                 onChange={(
                   event,
                 ) =>
@@ -878,7 +1002,7 @@ No watermark.
                   )
                 }
                 rows={4}
-                className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400"
+                className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400 disabled:opacity-50"
                 placeholder="Exemple : un message sur les personnes qui traversent une période de doute..."
               />
             </div>
@@ -894,6 +1018,9 @@ No watermark.
               <select
                 id="tone"
                 value={tone}
+                disabled={
+                  videoLoading
+                }
                 onChange={(
                   event,
                 ) =>
@@ -902,7 +1029,7 @@ No watermark.
                       .value,
                   )
                 }
-                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-violet-400"
+                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-violet-400 disabled:opacity-50"
               >
                 {tones.map(
                   (item) => (
@@ -922,7 +1049,10 @@ No watermark.
               onClick={
                 generateContent
               }
-              disabled={loading}
+              disabled={
+                loading ||
+                videoLoading
+              }
               className="mt-7 inline-flex items-center justify-center rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading
@@ -1059,11 +1189,11 @@ No watermark.
               </h3>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                Runway va créer 4
-                scènes verticales de
-                5 secondes, soit
-                environ 20 secondes
-                de contenu vidéo.
+                Les 4 scènes de 5
+                secondes sont créées
+                l&apos;une après
+                l&apos;autre pour éviter
+                les limitations Runway.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
@@ -1078,7 +1208,9 @@ No watermark.
                   className="rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {videoLoading
-                    ? `🎬 Création en cours... ${finishedSceneCount}/4`
+                    ? currentScene > 0
+                      ? `🎬 Scène ${currentScene}/4 — ${finishedSceneCount} terminée(s)`
+                      : "🎬 Finalisation..."
                     : "🎬 Créer les 4 scènes IA"}
                 </button>
 
@@ -1097,13 +1229,41 @@ No watermark.
                   )}
               </div>
 
+              {videoLoading && (
+                <div className="mt-5">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>
+                      Génération
+                      séquentielle
+                    </span>
+
+                    <span>
+                      {
+                        finishedSceneCount
+                      }
+                      /4
+                    </span>
+                  </div>
+
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full bg-violet-500 transition-all duration-500"
+                      style={{
+                        width:
+                          `${finishedSceneCount * 25}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {scenes.length > 0 && (
                 <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                   {scenes.map(
                     (scene) => (
                       <div
                         key={
-                          scene.taskId
+                          scene.scene
                         }
                         className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
                       >
@@ -1116,10 +1276,10 @@ No watermark.
                               }
                             </p>
 
-                            <p className="mt-1 text-sm font-semibold text-white">
-                              {sceneTitle(
-                                scene.scene,
-                              )}
+                            <p className="mt-1 text-sm font-semibold">
+                              {
+                                scene.title
+                              }
                             </p>
                           </div>
 
@@ -1128,7 +1288,13 @@ No watermark.
                               scene.status ===
                               "SUCCEEDED"
                                 ? "bg-emerald-500/10 text-emerald-300"
-                                : "bg-violet-500/10 text-violet-300"
+                                : scene.status ===
+                                    "FAILED"
+                                  ? "bg-rose-500/10 text-rose-300"
+                                  : scene.status ===
+                                      "THROTTLED"
+                                    ? "bg-amber-500/10 text-amber-300"
+                                    : "bg-violet-500/10 text-violet-300"
                             }`}
                           >
                             {getVideoStatusLabel(
@@ -1150,20 +1316,30 @@ No watermark.
                           </div>
                         ) : (
                           <div className="mt-4 flex aspect-[9/16] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900">
-                            <p className="px-3 text-center text-xs text-slate-500">
+                            <p className="px-4 text-center text-xs leading-5 text-slate-500">
                               {scene.status ===
-                              "RUNNING"
-                                ? "Runway génère cette scène..."
-                                : "En attente de la vidéo"}
+                              "WAITING"
+                                ? "Cette scène démarrera après la précédente."
+                                : scene.status ===
+                                    "THROTTLED"
+                                  ? "Runway temporise. Nouvelle tentative automatique..."
+                                  : scene.status ===
+                                        "RUNNING" ||
+                                      scene.status ===
+                                        "PENDING"
+                                    ? "Runway génère cette scène..."
+                                    : "Préparation de la scène..."}
                             </p>
                           </div>
                         )}
 
-                        <p className="mt-3 break-all text-[10px] text-slate-700">
-                          {
-                            scene.taskId
-                          }
-                        </p>
+                        {scene.taskId && (
+                          <p className="mt-3 break-all text-[10px] text-slate-700">
+                            {
+                              scene.taskId
+                            }
+                          </p>
+                        )}
                       </div>
                     ),
                   )}
@@ -1187,12 +1363,13 @@ No watermark.
 
                   <p className="mt-2 text-sm leading-6 text-slate-400">
                     Nous avons maintenant
-                    environ 20 secondes
-                    de vidéo. La prochaine
-                    étape sera de réunir
-                    automatiquement ces
-                    4 clips en un seul
-                    MP4 TikTok.
+                    quatre clips de
+                    5 secondes, soit
+                    environ 20 secondes.
+                    L&apos;étape suivante
+                    sera de les assembler
+                    automatiquement en
+                    un seul MP4.
                   </p>
                 </div>
               )}
@@ -1204,8 +1381,11 @@ No watermark.
                 onClick={
                   generateContent
                 }
-                disabled={loading}
-                className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-5 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20"
+                disabled={
+                  loading ||
+                  videoLoading
+                }
+                className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-5 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 🔄 Régénérer le contenu
               </button>
@@ -1235,20 +1415,22 @@ No watermark.
                 "Texte écran",
                 "Légende",
                 "Hashtags",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/10 text-sm font-bold text-violet-300">
-                    ✓
-                  </div>
+              ].map(
+                (item) => (
+                  <div
+                    key={item}
+                    className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-500/10 text-sm font-bold text-violet-300">
+                      ✓
+                    </div>
 
-                  <p className="mt-3 text-sm font-semibold">
-                    {item}
-                  </p>
-                </div>
-              ))}
+                    <p className="mt-3 text-sm font-semibold">
+                      {item}
+                    </p>
+                  </div>
+                ),
+              )}
             </div>
           </section>
         )}

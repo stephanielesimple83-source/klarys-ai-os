@@ -7,26 +7,22 @@ import {
   useState,
 } from "react";
 
-import {
-  upload,
-} from "@vercel/blob/client";
-
-type UploadResult = {
+type InitUploadResult = {
   success?: boolean;
+  publishId?: string;
+  uploadUrl?: string;
+  videoSize?: number;
+  chunkSize?: number;
+  totalChunkCount?: number;
+  error?: string;
 
   tiktok?: {
-    data?: {
-      publish_id?: string;
-    };
-
     error?: {
       code?: string;
       message?: string;
       log_id?: string;
     };
   };
-
-  error?: string;
 };
 
 type StatusResult = {
@@ -74,10 +70,10 @@ function getStatusLabel(
       return "Envoyée dans TikTok";
 
     case "PROCESSING_UPLOAD":
-      return "Vidéo en cours de traitement";
+      return "Vidéo en cours d'envoi";
 
     case "PROCESSING_DOWNLOAD":
-      return "TikTok récupère la vidéo";
+      return "TikTok traite la vidéo";
 
     case "PUBLISH_COMPLETE":
       return "Publication terminée";
@@ -102,12 +98,6 @@ export default function TikTokUploadPanel() {
   const [
     previewUrl,
     setPreviewUrl,
-  ] =
-    useState("");
-
-  const [
-    publicVideoUrl,
-    setPublicVideoUrl,
   ] =
     useState("");
 
@@ -147,16 +137,9 @@ export default function TikTokUploadPanel() {
   ] =
     useState(false);
 
-  const [
-    uploadProgress,
-    setUploadProgress,
-  ] =
-    useState(0);
-
   useEffect(() => {
     if (!selectedFile) {
       setPreviewUrl("");
-
       return;
     }
 
@@ -211,58 +194,10 @@ export default function TikTokUploadPanel() {
       event.target.files?.[0] ??
       null;
 
-    setSelectedFile(
-      file,
-    );
-
-    setPublicVideoUrl("");
+    setSelectedFile(file);
     setPublishId("");
     setStatus("");
     setMessage("");
-    setUploadProgress(0);
-  }
-
-  async function uploadVideoToBlob() {
-    if (!selectedFile) {
-      throw new Error(
-        "Choisis d'abord une vidéo.",
-      );
-    }
-
-    setMessage(
-      "Upload de la vidéo en cours...",
-    );
-
-    const blob =
-      await upload(
-        selectedFile.name,
-        selectedFile,
-        {
-          access:
-            "public",
-
-          handleUploadUrl:
-            "/api/tiktok/video-upload",
-
-          multipart:
-            true,
-
-          onUploadProgress:
-            (progress) => {
-              setUploadProgress(
-                Math.round(
-                  progress.percentage,
-                ),
-              );
-            },
-        },
-      );
-
-    setPublicVideoUrl(
-      blob.url,
-    );
-
-    return blob.url;
   }
 
   async function sendVideo() {
@@ -275,19 +210,18 @@ export default function TikTokUploadPanel() {
     }
 
     setLoading(true);
-    setMessage("");
+    setMessage(
+      "Initialisation de l'envoi TikTok...",
+    );
     setStatus("");
     setPublishId("");
 
     try {
-      const blobUrl =
-        await uploadVideoToBlob();
-
-      setMessage(
-        "Vidéo hébergée. Envoi vers TikTok...",
-      );
-
-      const response =
+      /*
+       * Étape 1 :
+       * demander à TikTok une upload_url.
+       */
+      const initResponse =
         await fetch(
           "/api/tiktok/upload",
           {
@@ -300,8 +234,8 @@ export default function TikTokUploadPanel() {
 
             body:
               JSON.stringify({
-                videoUrl:
-                  blobUrl,
+                videoSize:
+                  selectedFile.size,
 
                 caption:
                   finalCaption,
@@ -309,42 +243,84 @@ export default function TikTokUploadPanel() {
           },
         );
 
-      const data: UploadResult =
-        await response.json();
+      const initData:
+        InitUploadResult =
+        await initResponse.json();
 
       if (
-        !response.ok ||
-        !data.success
+        !initResponse.ok ||
+        !initData.success
       ) {
         const tikTokMessage =
-          data.tiktok?.error
+          initData.tiktok?.error
             ?.message;
 
         const tikTokCode =
-          data.tiktok?.error
+          initData.tiktok?.error
             ?.code;
 
         throw new Error(
           tikTokMessage ||
             tikTokCode ||
-            data.error ||
-            "TikTok a refusé l'envoi.",
+            initData.error ||
+            "TikTok a refusé l'initialisation.",
         );
       }
 
-      const newPublishId =
-        data.tiktok?.data
-          ?.publish_id;
-
-      if (!newPublishId) {
+      if (
+        !initData.uploadUrl ||
+        !initData.publishId
+      ) {
         throw new Error(
-          "TikTok n'a pas retourné de publish_id.",
+          "TikTok n'a pas retourné l'upload_url ou le publish_id.",
         );
       }
 
       setPublishId(
-        newPublishId,
+        initData.publishId,
       );
+
+      setMessage(
+        "Envoi du fichier vidéo vers TikTok...",
+      );
+
+      /*
+       * Étape 2 :
+       * envoyer directement le fichier
+       * binaire vers TikTok.
+       */
+      const uploadResponse =
+        await fetch(
+          initData.uploadUrl,
+          {
+            method: "PUT",
+
+            headers: {
+              "Content-Type":
+                selectedFile.type ||
+                "video/mp4",
+
+              "Content-Length":
+                selectedFile.size.toString(),
+
+              "Content-Range":
+                `bytes 0-${selectedFile.size - 1}/${selectedFile.size}`,
+            },
+
+            body:
+              selectedFile,
+          },
+        );
+
+      if (!uploadResponse.ok) {
+        const text =
+          await uploadResponse.text();
+
+        throw new Error(
+          text ||
+            `Échec de l'upload TikTok (${uploadResponse.status}).`,
+        );
+      }
 
       setMessage(
         "Vidéo envoyée à TikTok avec succès.",
@@ -391,7 +367,8 @@ export default function TikTokUploadPanel() {
           },
         );
 
-      const data: StatusResult =
+      const data:
+        StatusResult =
         await response.json();
 
       if (
@@ -445,7 +422,7 @@ export default function TikTokUploadPanel() {
         <p className="max-w-2xl text-sm leading-6 text-slate-400">
           Choisis une vidéo sur ton PC,
           prépare ton texte puis
-          envoie-la vers TikTok.
+          envoie-la directement vers TikTok.
         </p>
       </div>
 
@@ -486,9 +463,7 @@ export default function TikTokUploadPanel() {
             </p>
 
             <p className="mt-3 break-all font-semibold text-white">
-              {
-                selectedFile.name
-              }
+              {selectedFile.name}
             </p>
 
             <p className="mt-2 text-sm text-slate-400">
@@ -504,48 +479,6 @@ export default function TikTokUploadPanel() {
                 selectedFile.type
               }
             </p>
-
-            {loading &&
-              uploadProgress > 0 &&
-              uploadProgress < 100 && (
-                <div className="mt-5">
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span>
-                      Upload
-                    </span>
-
-                    <span>
-                      {
-                        uploadProgress
-                      }%
-                    </span>
-                  </div>
-
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
-                    <div
-                      className="h-full bg-violet-500 transition-all"
-                      style={{
-                        width:
-                          `${uploadProgress}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-            {publicVideoUrl && (
-              <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                <p className="text-sm font-semibold text-emerald-300">
-                  Vidéo hébergée
-                </p>
-
-                <p className="mt-2 break-all text-xs text-slate-400">
-                  {
-                    publicVideoUrl
-                  }
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -573,8 +506,7 @@ export default function TikTokUploadPanel() {
         />
 
         <div className="mt-1 text-right text-xs text-slate-500">
-          {caption.length} /
-          2200
+          {caption.length} / 2200
         </div>
       </div>
 
@@ -668,9 +600,8 @@ export default function TikTokUploadPanel() {
           {status ===
             "SEND_TO_USER_INBOX" && (
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              La vidéo a été
-              envoyée dans la boîte
-              TikTok du compte
+              La vidéo a été envoyée dans
+              la boîte TikTok du compte
               connecté.
             </p>
           )}

@@ -34,25 +34,44 @@ export async function POST(
     const body =
       await request.json();
 
-    const videoUrl =
-      body?.videoUrl;
+    const videoSize =
+      Number(
+        body?.videoSize,
+      );
 
     if (
-      !videoUrl ||
-      typeof videoUrl !==
-        "string"
+      !Number.isFinite(
+        videoSize,
+      ) ||
+      videoSize <= 0
     ) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "videoUrl est obligatoire.",
+            "videoSize est obligatoire.",
         },
         {
           status: 400,
         },
       );
     }
+
+    /*
+     * Pour notre première version,
+     * on utilise un upload en un seul
+     * morceau.
+     *
+     * TikTok autorise ce mode pour
+     * les petites vidéos, notamment
+     * lorsque la vidéo fait moins
+     * de 5 Mo.
+     */
+    const chunkSize =
+      videoSize;
+
+    const totalChunkCount =
+      1;
 
     const response =
       await fetch(
@@ -68,15 +87,22 @@ export async function POST(
               "application/json; charset=UTF-8",
           },
 
-          body: JSON.stringify({
-            source_info: {
-              source:
-                "PULL_FROM_URL",
+          body:
+            JSON.stringify({
+              source_info: {
+                source:
+                  "FILE_UPLOAD",
 
-              video_url:
-                videoUrl,
-            },
-          }),
+                video_size:
+                  videoSize,
+
+                chunk_size:
+                  chunkSize,
+
+                total_chunk_count:
+                  totalChunkCount,
+              },
+            }),
 
           cache:
             "no-store",
@@ -86,24 +112,66 @@ export async function POST(
     const data =
       await response.json();
 
-    if (!response.ok) {
+    if (
+      !response.ok ||
+      data?.error?.code !==
+        "ok"
+    ) {
       return NextResponse.json(
         {
           success: false,
+
           status:
             response.status,
+
           tiktok:
             data,
         },
         {
-          status: response.status,
+          status:
+            response.ok
+              ? 400
+              : response.status,
+        },
+      );
+    }
+
+    const publishId =
+      data?.data?.publish_id;
+
+    const uploadUrl =
+      data?.data?.upload_url;
+
+    if (
+      !publishId ||
+      !uploadUrl
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "TikTok n'a pas retourné de publish_id ou upload_url.",
+          tiktok:
+            data,
+        },
+        {
+          status: 500,
         },
       );
     }
 
     return NextResponse.json({
       success: true,
-      tiktok: data,
+
+      publishId,
+
+      uploadUrl,
+
+      videoSize,
+
+      chunkSize,
+
+      totalChunkCount,
     });
   } catch (error) {
     const message =
@@ -114,7 +182,8 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        error: message,
+        error:
+          message,
       },
       {
         status: 500,

@@ -12,7 +12,6 @@ const RUNWAY_API_URL =
 const RUNWAY_API_VERSION =
   "2024-11-06";
 
-const MAX_SCENES = 4;
 const SCENE_DURATION = 5;
 
 type RunwayTask = {
@@ -28,87 +27,6 @@ type RunwayTask = {
 
   message?: string;
 };
-
-async function startRunwayTask(
-  apiKey: string,
-  prompt: string,
-) {
-  const promptText =
-    prompt
-      .trim()
-      .slice(0, 1000);
-
-  if (!promptText) {
-    throw new Error(
-      "Un prompt de scène est vide.",
-    );
-  }
-
-  const response =
-    await fetch(
-      RUNWAY_API_URL,
-      {
-        method: "POST",
-
-        headers: {
-          Authorization:
-            `Bearer ${apiKey}`,
-
-          "Content-Type":
-            "application/json",
-
-          "X-Runway-Version":
-            RUNWAY_API_VERSION,
-        },
-
-        body:
-          JSON.stringify({
-            model:
-              "gen4.5",
-
-            promptText,
-
-            ratio:
-              "720:1280",
-
-            duration:
-              SCENE_DURATION,
-          }),
-
-        cache:
-          "no-store",
-      },
-    );
-
-  const data =
-    (await response.json()) as RunwayTask;
-
-  if (!response.ok) {
-    const runwayMessage =
-      data?.error?.message ??
-      data?.message ??
-      "Runway a refusé la génération vidéo.";
-
-    throw new Error(
-      runwayMessage,
-    );
-  }
-
-  if (!data?.id) {
-    throw new Error(
-      "Runway n'a pas retourné d'identifiant de génération.",
-    );
-  }
-
-  return {
-    taskId:
-      data.id,
-
-    estimatedCost:
-      data.estimatedCost ??
-      null,
-  };
-}
 
 export async function POST(
   request: NextRequest,
@@ -135,69 +53,28 @@ export async function POST(
       await request.json();
 
     /*
-     * Ancien mode :
-     * {
-     *   prompt: "..."
-     * }
+     * Cette route démarre désormais
+     * UNE SEULE scène Runway.
      *
-     * Nouveau mode :
-     * {
-     *   prompts: [
-     *     "...",
-     *     "...",
-     *     "...",
-     *     "..."
-     *   ]
-     * }
+     * Le Studio attendra que cette
+     * scène soit terminée avant
+     * d'appeler cette route pour
+     * la scène suivante.
      */
 
-    const singlePrompt =
+    const prompt =
       typeof body?.prompt ===
       "string"
         ? body.prompt.trim()
         : "";
 
-    const requestedPrompts =
-      Array.isArray(
-        body?.prompts,
-      )
-        ? body.prompts
-            .filter(
-              (
-                value: unknown,
-              ): value is string =>
-                typeof value ===
-                  "string",
-            )
-            .map(
-              (
-                value: string,
-              ) =>
-                value.trim(),
-            )
-            .filter(Boolean)
-        : [];
-
-    const prompts =
-      requestedPrompts.length >
-      0
-        ? requestedPrompts.slice(
-            0,
-            MAX_SCENES,
-          )
-        : singlePrompt
-          ? [singlePrompt]
-          : [];
-
-    if (
-      prompts.length === 0
-    ) {
+    if (!prompt) {
       return NextResponse.json(
         {
           success: false,
 
           error:
-            "Au moins un prompt vidéo est obligatoire.",
+            "Le prompt vidéo est obligatoire.",
         },
         {
           status: 400,
@@ -205,88 +82,108 @@ export async function POST(
       );
     }
 
-    /*
-     * On démarre les scènes
-     * l'une après l'autre.
-     *
-     * Cela évite de déclencher
-     * 4 appels Runway exactement
-     * au même instant.
-     */
-    const tasks: Array<{
-      scene: number;
-      taskId: string;
-      estimatedCost: unknown;
-    }> = [];
+    const promptText =
+      prompt.slice(
+        0,
+        1000,
+      );
 
-    for (
-      let index = 0;
-      index < prompts.length;
-      index++
-    ) {
-      const result =
-        await startRunwayTask(
-          apiKey,
-          prompts[index],
-        );
+    const response =
+      await fetch(
+        RUNWAY_API_URL,
+        {
+          method: "POST",
 
-      tasks.push({
-        scene:
-          index + 1,
+          headers: {
+            Authorization:
+              `Bearer ${apiKey}`,
 
-        taskId:
-          result.taskId,
+            "Content-Type":
+              "application/json",
 
-        estimatedCost:
-          result.estimatedCost,
-      });
+            "X-Runway-Version":
+              RUNWAY_API_VERSION,
+          },
+
+          body:
+            JSON.stringify({
+              model:
+                "gen4.5",
+
+              promptText,
+
+              ratio:
+                "720:1280",
+
+              duration:
+                SCENE_DURATION,
+            }),
+
+          cache:
+            "no-store",
+        },
+      );
+
+    const data =
+      (await response.json()) as RunwayTask;
+
+    if (!response.ok) {
+      const runwayMessage =
+        data?.error?.message ??
+        data?.message ??
+        "Runway a refusé la génération vidéo.";
+
+      return NextResponse.json(
+        {
+          success: false,
+
+          status:
+            response.status,
+
+          error:
+            runwayMessage,
+
+          runway:
+            data,
+        },
+        {
+          status:
+            response.status,
+        },
+      );
     }
 
-    /*
-     * Compatibilité avec
-     * l'interface actuelle :
-     * si une seule scène est
-     * demandée, on continue
-     * de retourner taskId.
-     */
-    if (
-      tasks.length === 1
-    ) {
-      return NextResponse.json({
-        success: true,
+    const taskId =
+      data?.id;
 
-        mode:
-          "single",
+    if (!taskId) {
+      return NextResponse.json(
+        {
+          success: false,
 
-        taskId:
-          tasks[0].taskId,
+          error:
+            "Runway n'a pas retourné d'identifiant de génération.",
 
-        estimatedCost:
-          tasks[0]
-            .estimatedCost,
-
-        duration:
-          SCENE_DURATION,
-      });
+          runway:
+            data,
+        },
+        {
+          status: 502,
+        },
+      );
     }
 
     return NextResponse.json({
       success: true,
 
-      mode:
-        "multi-scene",
+      taskId,
 
-      sceneCount:
-        tasks.length,
-
-      sceneDuration:
+      duration:
         SCENE_DURATION,
 
-      totalDuration:
-        tasks.length *
-        SCENE_DURATION,
-
-      tasks,
+      estimatedCost:
+        data?.estimatedCost ??
+        null,
     });
   } catch (error) {
     const message =
@@ -297,6 +194,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
+
         error:
           message,
       },

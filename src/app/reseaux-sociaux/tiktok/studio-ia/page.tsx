@@ -5,6 +5,7 @@ import Link from "next/link";
 import TikTokVideoAssembler from "@/components/tiktok/TikTokVideoAssembler";
 
 import {
+  useEffect,
   useState,
 } from "react";
 
@@ -161,6 +162,19 @@ function getSceneTitle(
   }
 }
 
+type SavedStudioProject = {
+  version: 1;
+  selectedType: string;
+  subject: string;
+  tone: string;
+  generated: GeneratedContent | null;
+  scenes: SceneState[];
+  savedAt: string;
+};
+
+const STUDIO_STORAGE_KEY =
+  "klarys-ai-os:tiktok-studio:current-project";
+
 export default function TikTokAIStudioPage() {
   const [
     selectedType,
@@ -227,6 +241,201 @@ export default function TikTokAIStudioPage() {
     setCurrentScene,
   ] =
     useState(0);
+
+  const [
+    projectRestored,
+    setProjectRestored,
+  ] =
+    useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreProject() {
+      try {
+        const raw =
+          window.localStorage.getItem(
+            STUDIO_STORAGE_KEY,
+          );
+
+        if (!raw) {
+          return;
+        }
+
+        const saved =
+          JSON.parse(
+            raw,
+          ) as SavedStudioProject;
+
+        if (
+          saved?.version !== 1
+        ) {
+          return;
+        }
+
+        setSelectedType(
+          saved.selectedType ??
+            "",
+        );
+
+        setSubject(
+          saved.subject ??
+            "",
+        );
+
+        setTone(
+          saved.tone ||
+            "Naturel et chaleureux",
+        );
+
+        setGenerated(
+          saved.generated ??
+            null,
+        );
+
+        const savedScenes =
+          Array.isArray(
+            saved.scenes,
+          )
+            ? saved.scenes
+            : [];
+
+        /*
+         * Les URL Runway peuvent être
+         * temporaires. Au rechargement,
+         * on réinterroge donc les taskId
+         * existants pour récupérer leur
+         * statut et une URL vidéo fraîche,
+         * sans relancer ni repayer la
+         * génération.
+         */
+        const refreshedScenes =
+          await Promise.all(
+            savedScenes.map(
+              async (
+                scene,
+              ) => {
+                if (
+                  !scene.taskId
+                ) {
+                  return scene;
+                }
+
+                try {
+                  const statusData =
+                    await checkVideoStatus(
+                      scene.taskId,
+                    );
+
+                  return {
+                    ...scene,
+
+                    status:
+                      statusData.status ??
+                      scene.status,
+
+                    videoUrl:
+                      statusData.videoUrl ??
+                      scene.videoUrl,
+                  };
+                } catch {
+                  /*
+                   * Si Runway ne répond
+                   * momentanément pas,
+                   * on conserve les données
+                   * sauvegardées localement.
+                   */
+                  return scene;
+                }
+              },
+            ),
+          );
+
+        if (
+          cancelled
+        ) {
+          return;
+        }
+
+        setScenes(
+          refreshedScenes,
+        );
+
+        setCurrentScene(0);
+        setVideoError("");
+      } catch (
+        restoreError
+      ) {
+        console.error(
+          "Impossible de restaurer le projet TikTok Studio.",
+          restoreError,
+        );
+      } finally {
+        if (
+          !cancelled
+        ) {
+          setProjectRestored(
+            true,
+          );
+        }
+      }
+    }
+
+    void restoreProject();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !projectRestored
+    ) {
+      return;
+    }
+
+    const project:
+      SavedStudioProject = {
+        version: 1,
+
+        selectedType,
+
+        subject,
+
+        tone,
+
+        generated,
+
+        scenes,
+
+        savedAt:
+          new Date().toISOString(),
+      };
+
+    try {
+      window.localStorage.setItem(
+        STUDIO_STORAGE_KEY,
+        JSON.stringify(
+          project,
+        ),
+      );
+    } catch (
+      saveError
+    ) {
+      console.error(
+        "Impossible de sauvegarder le projet TikTok Studio.",
+        saveError,
+      );
+    }
+  }, [
+    projectRestored,
+    selectedType,
+    subject,
+    tone,
+    generated,
+    scenes,
+  ]);
 
   async function generateContent() {
     if (!selectedType) {
@@ -982,6 +1191,12 @@ ${visualIdentity}
               composée de quatre
               scènes IA.
             </p>
+
+            {projectRestored && (
+              <p className="mt-3 text-xs text-emerald-300">
+                ✓ Projet sauvegardé automatiquement sur cet appareil
+              </p>
+            )}
           </div>
 
           <Link

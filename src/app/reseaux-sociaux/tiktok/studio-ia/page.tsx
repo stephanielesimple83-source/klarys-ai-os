@@ -1,3 +1,6 @@
+
+
+
 "use client";
 
 import Link from "next/link";
@@ -513,7 +516,7 @@ No watermark.
   ) {
     for (
       let attempt = 0;
-      attempt < 35;
+      attempt < 100;
       attempt++
     ) {
       await wait(6000);
@@ -573,7 +576,7 @@ No watermark.
     }
 
     throw new Error(
-      `La scène ${sceneNumber} prend plus de temps que prévu.`,
+      `La scène ${sceneNumber} est toujours en cours après 10 minutes. Vérifie son statut avant de relancer.`,
     );
   }
 
@@ -770,6 +773,116 @@ No watermark.
         error instanceof Error
           ? error.message
           : "Impossible de créer la vidéo.",
+      );
+    } finally {
+      setVideoLoading(false);
+    }
+  }
+
+  async function resumeMissingScenes() {
+    if (!generated) {
+      setVideoError(
+        "Génère d'abord le contenu.",
+      );
+
+      return;
+    }
+
+    if (
+      scenes.length === 0
+    ) {
+      await createVideo();
+
+      return;
+    }
+
+    setVideoLoading(true);
+    setVideoError("");
+
+    const prompts =
+      buildScenePrompts(
+        generated,
+      );
+
+    try {
+      for (
+        let index = 0;
+        index < prompts.length;
+        index++
+      ) {
+        const sceneNumber =
+          index + 1;
+
+        const existingScene =
+          scenes.find(
+            (scene) =>
+              scene.scene ===
+              sceneNumber,
+          );
+
+        if (
+          existingScene?.status ===
+          "SUCCEEDED"
+        ) {
+          continue;
+        }
+
+        setCurrentScene(
+          sceneNumber,
+        );
+
+        /*
+         * Si la scène possède déjà
+         * un taskId Runway, on ne
+         * paie pas une nouvelle
+         * génération : on reprend
+         * simplement son suivi.
+         */
+        if (
+          existingScene?.taskId &&
+          existingScene.status !==
+            "FAILED" &&
+          existingScene.status !==
+            "CANCELED"
+        ) {
+          await waitForSceneCompletion(
+            sceneNumber,
+            existingScene.taskId,
+          );
+        } else {
+          /*
+           * Pas de taskId :
+           * cette scène n'a jamais
+           * été démarrée. On crée
+           * uniquement celle-ci.
+           */
+          const taskId =
+            await startOneScene(
+              sceneNumber,
+              prompts[index],
+            );
+
+          await waitForSceneCompletion(
+            sceneNumber,
+            taskId,
+          );
+        }
+
+        if (
+          sceneNumber < 4
+        ) {
+          await wait(
+            8000,
+          );
+        }
+      }
+
+      setCurrentScene(0);
+    } catch (error) {
+      setVideoError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de reprendre la génération.",
       );
     } finally {
       setVideoLoading(false);
@@ -1200,10 +1313,14 @@ No watermark.
                 <button
                   type="button"
                   onClick={
-                    createVideo
+                    scenes.length > 0 &&
+                    !allScenesFinished
+                      ? resumeMissingScenes
+                      : createVideo
                   }
                   disabled={
-                    videoLoading
+                    videoLoading ||
+                    allScenesFinished
                   }
                   className="rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -1211,7 +1328,11 @@ No watermark.
                     ? currentScene > 0
                       ? `🎬 Scène ${currentScene}/4 — ${finishedSceneCount} terminée(s)`
                       : "🎬 Finalisation..."
-                    : "🎬 Créer les 4 scènes IA"}
+                    : allScenesFinished
+                      ? "✓ Les 4 scènes sont terminées"
+                      : scenes.length > 0
+                        ? "▶ Reprendre les scènes manquantes"
+                        : "🎬 Créer les 4 scènes IA"}
                 </button>
 
                 {scenes.length > 0 &&

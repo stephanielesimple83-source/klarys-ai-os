@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 
+import TikTokUploadPanel from "@/components/tiktok/TikTokUploadPanel";
+
 import {
   getTikTokUserInfo,
   type TikTokUserInfo,
@@ -23,16 +25,23 @@ export default async function TikTokPage({
   const cookieStore = await cookies();
 
   const accessToken =
-    cookieStore.get("tiktok_access_token")?.value;
+    cookieStore.get(
+      "tiktok_access_token",
+    )?.value;
 
-  let user: TikTokUserInfo | null = null;
-  let profileError: string | null = null;
+  let user: TikTokUserInfo | null =
+    null;
+
+  let profileError:
+    | string
+    | null = null;
 
   if (accessToken) {
     try {
-      user = await getTikTokUserInfo(
-        accessToken,
-      );
+      user =
+        await getTikTokUserInfo(
+          accessToken,
+        );
     } catch (error) {
       profileError =
         error instanceof Error
@@ -41,14 +50,6 @@ export default async function TikTokPage({
     }
   }
 
-  /*
-   * TikTok nous renvoie ?connected=1 après
-   * une autorisation OAuth réussie.
-   *
-   * On considère donc la connexion active
-   * dès que le callback a réussi,
-   * même si le profil n'est pas encore chargé.
-   */
   const connected =
     params.connected === "1" ||
     Boolean(accessToken);
@@ -81,15 +82,17 @@ export default async function TikTokPage({
         </h1>
 
         <p className="mt-3 max-w-2xl text-slate-400">
-          Connecte ton compte TikTok pour préparer,
-          envoyer et publier tes contenus depuis
+          Connecte ton compte TikTok
+          pour préparer, envoyer et
+          publier tes contenus depuis
           Klarys AI OS.
         </p>
 
         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-7">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              {connected && avatarUrl ? (
+              {connected &&
+              avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={displayName}
@@ -97,7 +100,9 @@ export default async function TikTokPage({
                 />
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-2xl font-bold text-slate-400">
-                  {connected ? "✓" : "T"}
+                  {connected
+                    ? "✓"
+                    : "T"}
                 </div>
               )}
 
@@ -109,13 +114,15 @@ export default async function TikTokPage({
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-400">
-                  Sandbox TikTok — Login Kit +
-                  Content Posting API
+                  Sandbox TikTok —
+                  Login Kit + Content
+                  Posting API
                 </p>
 
                 {connected && (
                   <p className="mt-1 text-xs text-emerald-300">
-                    Compte TikTok autorisé
+                    Compte TikTok
+                    autorisé
                   </p>
                 )}
               </div>
@@ -143,8 +150,8 @@ export default async function TikTokPage({
 
               <p className="mt-2 text-sm text-slate-300">
                 Klarys AI OS a reçu
-                l&apos;autorisation de ton compte
-                TikTok.
+                l&apos;autorisation de
+                ton compte TikTok.
               </p>
 
               {user?.display_name && (
@@ -163,13 +170,16 @@ export default async function TikTokPage({
             profileError && (
               <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
                 <p className="font-semibold text-amber-300">
-                  Profil en cours de récupération
+                  Profil en cours de
+                  récupération
                 </p>
 
                 <p className="mt-2 text-sm text-slate-400">
-                  La connexion TikTok est bien
-                  autorisée. Les informations du
-                  profil seront récupérées ensuite.
+                  La connexion TikTok
+                  est bien autorisée.
+                  Les informations du
+                  profil seront
+                  récupérées ensuite.
                 </p>
               </div>
             )}
@@ -247,23 +257,7 @@ export default async function TikTokPage({
         </section>
 
         {connected && (
-          <section className="mt-6 rounded-3xl border border-violet-500/20 bg-violet-500/5 p-7">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-violet-300">
-              Prochaine étape
-            </p>
-
-            <h2 className="mt-2 text-xl font-semibold">
-              Premier contenu TikTok
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              La connexion TikTok est opérationnelle.
-              Nous pouvons maintenant ajouter
-              l&apos;interface pour choisir une
-              vidéo, préparer son texte et
-              l&apos;envoyer vers TikTok.
-            </p>
-          </section>
+          <TikTokUploadPanel />
         )}
       </div>
     </main>

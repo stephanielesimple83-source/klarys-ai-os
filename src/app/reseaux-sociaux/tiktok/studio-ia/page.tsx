@@ -352,31 +352,44 @@ export default function TikTokAIStudioPage() {
   }
 
   function buildScenePrompts(
-    content: GeneratedContent,
-  ) {
-    const text1 =
-      content.screenText?.[0] ??
-      content.hook;
+  content: GeneratedContent,
+) {
+  const text1 =
+    content.screenText?.[0] ??
+    content.hook;
 
-    const text2 =
-      content.screenText?.[1] ??
-      content.script;
+  const text2 =
+    content.screenText?.[1] ??
+    content.script;
 
-    const text3 =
-      content.screenText?.[2] ??
-      content.script;
+  const text3 =
+    content.screenText?.[2] ??
+    content.script;
 
-    return [
-      `
+  const visualIdentity = `
+Keep the same overall visual identity across all 4 scenes:
+- same warm cinematic color palette
+- same lighting style
+- same room or environment when possible
+- same person, same hands and same wardrobe if a person appears
+- natural realistic movement
+- elegant vertical TikTok aesthetic
+- shallow depth of field
+- no logos
+- no subtitles
+- no readable text
+- no watermark
+- avoid repeating the exact same main object or composition from the previous scene
+  `.trim();
+
+  return [
+    `
 Vertical cinematic TikTok video, portrait 9:16.
 
-SCENE 1 - OPENING HOOK.
+SCENE 1 - OPENING ACTION.
 
 Theme:
 ${content.title}
-
-Visual direction:
-${content.visualIdea}
 
 Mood:
 ${tone}
@@ -387,28 +400,24 @@ ${content.hook}
 Visual inspiration:
 ${text1}
 
-Create an immediate and elegant opening.
-Strong visual impact in the first second.
-Smooth realistic movement.
-Natural cinematic lighting.
-Professional social media aesthetic.
-Keep visual continuity suitable for a four-scene sequence.
-No logos.
-No subtitles.
-No readable text.
-No watermark.
-      `.trim(),
+Visual direction:
+Start with a clear human action.
+Show hands preparing or handling the main object related to the theme.
+For tarot or intuitive content, show the deck being shuffled, spread or selected.
+Do not begin with a static cup, candle or already-positioned card.
+Use a close-up or medium close-up.
+Create strong movement in the first second.
 
-      `
+${visualIdentity}
+    `.trim(),
+
+    `
 Vertical cinematic TikTok video, portrait 9:16.
 
-SCENE 2 - DEVELOPMENT.
+SCENE 2 - DISCOVERY.
 
 Theme:
 ${content.title}
-
-Main visual direction:
-${content.visualIdea}
 
 Mood:
 ${tone}
@@ -419,27 +428,25 @@ ${content.script}
 Visual inspiration:
 ${text2}
 
-Continue the same visual universe as scene 1.
-Create a natural progression.
-Elegant camera movement.
-Warm atmospheric details.
-Professional TikTok aesthetic.
-No logos.
-No subtitles.
-No readable text.
-No watermark.
-      `.trim(),
+Visual direction:
+Show the next logical action after scene 1.
+Reveal or discover something visually.
+For tarot content, show a card being turned over or placed on the table.
+Change the camera angle from scene 1.
+Use a medium shot or over-the-shoulder composition.
+A candle, notebook or cup may appear only as a secondary background detail.
+The main subject must be different from scene 1.
 
-      `
+${visualIdentity}
+    `.trim(),
+
+    `
 Vertical cinematic TikTok video, portrait 9:16.
 
 SCENE 3 - CENTRAL MESSAGE.
 
 Theme:
 ${content.title}
-
-Main visual direction:
-${content.visualIdea}
 
 Mood:
 ${tone}
@@ -450,27 +457,23 @@ ${content.script}
 Visual inspiration:
 ${text3}
 
-Create the strongest symbolic or emotional moment.
-Maintain visual continuity with the previous scenes.
-Natural cinematic movement.
-Elegant composition.
-Not overloaded.
-No logos.
-No subtitles.
-No readable text.
-No watermark.
-      `.trim(),
+Visual direction:
+Create the strongest symbolic moment of the sequence.
+Focus on the meaning rather than repeating the same setup.
+For tarot content, highlight the selected card in a new composition, possibly with a slow camera move or a hand pointing to a detail.
+Use a tighter cinematic frame or a subtle push-in.
+Avoid repeating the same table arrangement, same cup placement or same candle framing used before.
 
-      `
+${visualIdentity}
+    `.trim(),
+
+    `
 Vertical cinematic TikTok video, portrait 9:16.
 
-SCENE 4 - CONCLUSION.
+SCENE 4 - CLOSING ACTION.
 
 Theme:
 ${content.title}
-
-Main visual direction:
-${content.visualIdea}
 
 Mood:
 ${tone}
@@ -478,18 +481,17 @@ ${tone}
 Closing message:
 ${content.caption}
 
-Create a gentle and memorable ending.
-Maintain continuity with the previous scenes.
-Elegant final movement.
-Calm satisfying conclusion.
-Professional TikTok aesthetic.
-No logos.
-No subtitles.
-No readable text.
-No watermark.
-      `.trim(),
-    ];
-  }
+Visual direction:
+Create a clear ending action.
+For tarot content, show the deck being closed, cards being gathered, a hand writing briefly in a notebook, or the scene being gently cleared.
+Use softer motion and a wider or more peaceful final shot.
+Do not end on another static cup, candle or repeated card close-up.
+The final frame should feel complete and calm.
+
+${visualIdentity}
+    `.trim(),
+  ];
+}
 
   function updateScene(
     sceneNumber: number,

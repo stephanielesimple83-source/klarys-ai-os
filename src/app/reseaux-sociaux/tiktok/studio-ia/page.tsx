@@ -482,7 +482,7 @@ export default function TikTokAIStudioPage() {
 
             body:
               JSON.stringify({
-                contentType:
+                type:
                   selectedType,
 
                 subject,

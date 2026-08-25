@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -126,7 +126,7 @@ function normalizeContent(
       "object"
   ) {
     throw new Error(
-      "Le contenu IA retourné est invalide.",
+      "Le contenu IA retournÃ© est invalide.",
     );
   }
 
@@ -200,7 +200,7 @@ function normalizeContent(
         role:
           typeof item.role === "string"
             ? item.role.trim()
-            : ["Accroche", "Développement", "Message central", "Conclusion"][index] ?? `Scène ${index + 1}`,
+            : ["Accroche", "DÃ©veloppement", "Message central", "Conclusion"][index] ?? `ScÃ¨ne ${index + 1}`,
         voiceText:
           typeof item.voiceText === "string"
             ? item.voiceText.trim()
@@ -276,6 +276,44 @@ function enforceTarotSceneRules(
   const forbiddenInstruction =
     "No tarot cards. No tarot deck. No oracle cards. No divination objects. Do not show or recreate the tarot card from scene 1.";
 
+  const tarotReferencePattern =
+    /\b(?:tarot|bateleur|oracle\s+cards?|divination|cards?|deck|spread)\b/i;
+
+  function cleanNonTarotPrompt(
+    prompt: string,
+  ) {
+    const sentences =
+      prompt.match(
+        /[^.!?]+[.!?]?/g,
+      ) ?? [];
+
+    const cleaned =
+      sentences
+        .map(
+          (sentence) =>
+            sentence.trim(),
+        )
+        .filter(Boolean)
+        .filter(
+          (sentence) =>
+            !tarotReferencePattern.test(
+              sentence,
+            ),
+        )
+        .join(" ")
+        .replace(
+          /\s{2,}/g,
+          " ",
+        )
+        .trim();
+
+    const safePrompt =
+      cleaned ||
+      "Vertical 9:16 cinematic continuation with the same adult person, same clothing and consistent warm natural lighting. Show one clear realistic human action that directly illustrates the spoken message. Elegant modern setting, natural facial expression, realistic movement, cinematic depth of field, no readable text, no subtitles, no logo, no watermark.";
+
+    return `${safePrompt}\n\n${forbiddenInstruction}`;
+  }
+
   const cleanedScenes =
     content.scenes.map(
       (scene, index) => {
@@ -283,78 +321,20 @@ function enforceTarotSceneRules(
           return scene;
         }
 
-        let visualPrompt =
-          scene.visualPrompt;
-
-        /*
-         * On retire les formulations les plus fréquentes
-         * qui demandent explicitement de conserver ou
-         * recréer une carte dans les scènes 2 à 4.
-         */
-        visualPrompt =
-          visualPrompt
-            .replace(
-              /same\s+(?:tarot\s+)?card[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /same\s+bateleur\s+card[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /the\s+bateleur\s+card[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /bateleur\s+card[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /tarot\s+card[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /tarot\s+deck[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /two-card\s+spread[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /second\s+card[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /cards?\s+(?:remain|remains|visible|foreground|background)[^.]*\.?/gi,
-              "",
-            )
-            .replace(
-              /\s{2,}/g,
-              " ",
-            )
-            .trim();
-
-        if (
-          !visualPrompt
-            .toLowerCase()
-            .includes(
-              "no tarot cards",
-            )
-        ) {
-          visualPrompt =
-            `${visualPrompt}\n\n${forbiddenInstruction}`.trim();
-        }
-
         return {
           ...scene,
-          visualPrompt,
+
+          visualPrompt:
+            cleanNonTarotPrompt(
+              scene.visualPrompt,
+            ),
         };
       },
     );
 
   return {
     ...content,
+
     scenes:
       cleanedScenes,
   };
@@ -373,7 +353,7 @@ export async function POST(
           success: false,
 
           error:
-            "La clé API OpenAI n'est pas configurée.",
+            "La clÃ© API OpenAI n'est pas configurÃ©e.",
         },
         {
           status: 500,
@@ -417,141 +397,141 @@ export async function POST(
     }
 
     const prompt = `
-Tu es le responsable éditorial TikTok de Klarys AI OS.
+Tu es le responsable Ã©ditorial TikTok de Klarys AI OS.
 
-Tu es spécialisé dans :
+Tu es spÃ©cialisÃ© dans :
 - TikTok France ;
-- création de contenu court ;
+- crÃ©ation de contenu court ;
 - SEO TikTok ;
 - recherche TikTok ;
 - choix de hashtags ;
 - voyance ;
 - tarot ;
-- spiritualité ;
-- développement personnel ;
-- lithothérapie ;
-- bien-être ;
+- spiritualitÃ© ;
+- dÃ©veloppement personnel ;
+- lithothÃ©rapie ;
+- bien-Ãªtre ;
 - commerce en ligne.
 
-Tu dois créer un contenu TikTok français court, naturel, crédible et optimisé pour la rétention.
+Tu dois crÃ©er un contenu TikTok franÃ§ais court, naturel, crÃ©dible et optimisÃ© pour la rÃ©tention.
 
 TYPE DE CONTENU :
 ${type}
 
 SUJET :
-${subject || "Choisis un angle pertinent adapté au type de contenu."}
+${subject || "Choisis un angle pertinent adaptÃ© au type de contenu."}
 
 TON :
 ${tone}
 
 OBJECTIF :
-Créer une vidéo verticale d'environ 20 secondes structurée en 4 scènes de 5 secondes.
+CrÃ©er une vidÃ©o verticale d'environ 20 secondes structurÃ©e en 4 scÃ¨nes de 5 secondes.
 
-RÈGLES DE CONTENU :
-- français naturel et fluide ;
-- accroche forte dès la première seconde ;
-- pas de promesse mensongère ;
-- pas de santé ;
+RÃˆGLES DE CONTENU :
+- franÃ§ais naturel et fluide ;
+- accroche forte dÃ¨s la premiÃ¨re seconde ;
+- pas de promesse mensongÃ¨re ;
+- pas de santÃ© ;
 - pas de grossesse ;
-- pas de contenu destiné aux mineurs ;
-- pas de formulation anxiogène ;
-- éviter les clichés excessivement mystiques ;
-- le script voix doit pouvoir être lu en environ 20 secondes ;
-- la légende doit compléter la vidéo sans recopier mot pour mot le script ;
-- les textes écran doivent être courts et lisibles.
+- pas de contenu destinÃ© aux mineurs ;
+- pas de formulation anxiogÃ¨ne ;
+- Ã©viter les clichÃ©s excessivement mystiques ;
+- le script voix doit pouvoir Ãªtre lu en environ 20 secondes ;
+- la lÃ©gende doit complÃ©ter la vidÃ©o sans recopier mot pour mot le script ;
+- les textes Ã©cran doivent Ãªtre courts et lisibles.
 
-HASHTAGS — PRIORITÉ ÉLEVÉE :
+HASHTAGS â€” PRIORITÃ‰ Ã‰LEVÃ‰E :
 
-Les hashtags ne doivent JAMAIS être choisis comme une simple liste générique.
+Les hashtags ne doivent JAMAIS Ãªtre choisis comme une simple liste gÃ©nÃ©rique.
 
-Avant de produire la réponse finale, analyse précisément :
+Avant de produire la rÃ©ponse finale, analyse prÃ©cisÃ©ment :
 1. le type de contenu ;
-2. le sujet exact de la vidéo ;
+2. le sujet exact de la vidÃ©o ;
 3. l'intention probable de la personne qui regarde ou recherche ce contenu ;
-4. le vocabulaire réellement utilisé autour de ce sujet ;
+4. le vocabulaire rÃ©ellement utilisÃ© autour de ce sujet ;
 5. les recherches et tendances actuelles disponibles sur le web lorsqu'elles sont pertinentes.
 
-Utilise la recherche web lorsque cela permet d'améliorer la sélection.
+Utilise la recherche web lorsque cela permet d'amÃ©liorer la sÃ©lection.
 
-Tu dois sélectionner entre 6 et 8 hashtags.
+Tu dois sÃ©lectionner entre 6 et 8 hashtags.
 
-Construis la sélection de cette manière :
+Construis la sÃ©lection de cette maniÃ¨re :
 
-CATÉGORIE A — SUJET EXACT
-Choisis 2 ou 3 hashtags directement liés au sujet précis de cette vidéo.
+CATÃ‰GORIE A â€” SUJET EXACT
+Choisis 2 ou 3 hashtags directement liÃ©s au sujet prÃ©cis de cette vidÃ©o.
 
-CATÉGORIE B — NICHE
-Choisis 2 ou 3 hashtags correspondant à l'audience réellement intéressée par ce type de contenu.
+CATÃ‰GORIE B â€” NICHE
+Choisis 2 ou 3 hashtags correspondant Ã  l'audience rÃ©ellement intÃ©ressÃ©e par ce type de contenu.
 
-CATÉGORIE C — DÉCOUVERTE
-Choisis 1 ou 2 hashtags légèrement plus larges, mais toujours cohérents avec le sujet.
+CATÃ‰GORIE C â€” DÃ‰COUVERTE
+Choisis 1 ou 2 hashtags lÃ©gÃ¨rement plus larges, mais toujours cohÃ©rents avec le sujet.
 
-Les hashtags doivent aider TikTok à comprendre :
-- de quoi parle la vidéo ;
-- à quelle audience la montrer ;
-- pour quelles recherches elle peut être pertinente.
+Les hashtags doivent aider TikTok Ã  comprendre :
+- de quoi parle la vidÃ©o ;
+- Ã  quelle audience la montrer ;
+- pour quelles recherches elle peut Ãªtre pertinente.
 
 IMPORTANT :
 La pertinence est plus importante que la taille du hashtag.
 
-Un hashtag très ciblé est préférable à un énorme hashtag générique sans rapport précis avec la vidéo.
+Un hashtag trÃ¨s ciblÃ© est prÃ©fÃ©rable Ã  un Ã©norme hashtag gÃ©nÃ©rique sans rapport prÃ©cis avec la vidÃ©o.
 
 ADAPTATION AUTOMATIQUE :
 
 Si le contenu concerne le tarot :
-privilégie les hashtags réellement liés au tarot, au tirage et au thème précis du tirage.
+privilÃ©gie les hashtags rÃ©ellement liÃ©s au tarot, au tirage et au thÃ¨me prÃ©cis du tirage.
 
 Si le contenu concerne la voyance :
-privilégie les hashtags correspondant à la voyance et au sujet traité.
+privilÃ©gie les hashtags correspondant Ã  la voyance et au sujet traitÃ©.
 
 Si le contenu concerne un tirage du jour :
-utilise des hashtags liés au tirage du jour, mais adapte aussi plusieurs hashtags à la carte, au message ou au thème précis.
+utilise des hashtags liÃ©s au tirage du jour, mais adapte aussi plusieurs hashtags Ã  la carte, au message ou au thÃ¨me prÃ©cis.
 
-Si le contenu concerne la spiritualité :
+Si le contenu concerne la spiritualitÃ© :
 ne mets pas automatiquement des hashtags tarot ou voyance si le contenu n'en parle pas.
 
-Si le contenu concerne la lithothérapie :
-utilise des hashtags liés aux pierres et surtout à la pierre ou au produit réellement présenté.
+Si le contenu concerne la lithothÃ©rapie :
+utilise des hashtags liÃ©s aux pierres et surtout Ã  la pierre ou au produit rÃ©ellement prÃ©sentÃ©.
 
 Si le contenu concerne un produit ou la boutique :
-utilise des hashtags correspondant au produit, à son usage et à l'intention d'achat.
+utilise des hashtags correspondant au produit, Ã  son usage et Ã  l'intention d'achat.
 
 VARIATION :
 
-Ne génère pas systématiquement la même combinaison de hashtags d'une vidéo à l'autre.
+Ne gÃ©nÃ¨re pas systÃ©matiquement la mÃªme combinaison de hashtags d'une vidÃ©o Ã  l'autre.
 
-Les hashtags doivent évoluer selon :
+Les hashtags doivent Ã©voluer selon :
 - le sujet ;
 - l'angle ;
 - le message ;
-- la carte de tarot éventuelle ;
-- le produit éventuel ;
-- l'intention de la vidéo.
+- la carte de tarot Ã©ventuelle ;
+- le produit Ã©ventuel ;
+- l'intention de la vidÃ©o.
 
 INTERDICTIONS :
 
 - aucun hashtag hors sujet ;
 - aucun doublon ;
 - pas de remplissage ;
-- pas de liste générique identique sur toutes les vidéos ;
+- pas de liste gÃ©nÃ©rique identique sur toutes les vidÃ©os ;
 - pas automatiquement #fyp ;
 - pas automatiquement #foryou ;
 - pas automatiquement #pourtoi ;
 - pas automatiquement #viral ;
 - pas automatiquement #tiktok ;
 - pas automatiquement #france ;
-- pas #klarys sauf si la marque Klarys est réellement le sujet ;
-- pas #bienetre si le contenu ne concerne pas directement le bien-être ;
-- pas #energie si le mot est utilisé uniquement comme terme générique ;
-- pas #developpementpersonnel si le sujet n'est pas réellement lié au développement personnel.
+- pas #klarys sauf si la marque Klarys est rÃ©ellement le sujet ;
+- pas #bienetre si le contenu ne concerne pas directement le bien-Ãªtre ;
+- pas #energie si le mot est utilisÃ© uniquement comme terme gÃ©nÃ©rique ;
+- pas #developpementpersonnel si le sujet n'est pas rÃ©ellement liÃ© au dÃ©veloppement personnel.
 
 Ne choisis jamais un hashtag uniquement parce qu'il semble populaire.
 
-Choisis-le parce qu'il correspond au contenu et à l'audience recherchée.
+Choisis-le parce qu'il correspond au contenu et Ã  l'audience recherchÃ©e.
 
 EXEMPLE DE LOGIQUE :
 
-Pour une vidéo "Tirage du jour — Le Bateleur", ne te contente pas de :
+Pour une vidÃ©o "Tirage du jour â€” Le Bateleur", ne te contente pas de :
 
 #tiragedujour
 #tarot
@@ -560,193 +540,193 @@ Pour une vidéo "Tirage du jour — Le Bateleur", ne te contente pas de :
 #bienetre
 #energie
 
-Analyse plutôt :
+Analyse plutÃ´t :
 - le tirage du jour ;
 - le tarot ;
 - la carte du Bateleur ;
 - sa notion de commencement ;
 - la confiance ;
-- le passage à l'action ;
-- l'audience intéressée par les tirages tarot.
+- le passage Ã  l'action ;
+- l'audience intÃ©ressÃ©e par les tirages tarot.
 
-La combinaison finale doit être spécifique à CETTE vidéo.
+La combinaison finale doit Ãªtre spÃ©cifique Ã  CETTE vidÃ©o.
 
-LÉGENDE :
+LÃ‰GENDE :
 
-Le champ "caption" contient uniquement la légende.
+Le champ "caption" contient uniquement la lÃ©gende.
 
 Ne mets aucun hashtag dans "caption".
 
-Tous les hashtags doivent être placés exclusivement dans le tableau "hashtags".
+Tous les hashtags doivent Ãªtre placÃ©s exclusivement dans le tableau "hashtags".
 
-VISUEL — PRIORITÉ ÉLEVÉE :
+VISUEL â€” PRIORITÃ‰ Ã‰LEVÃ‰E :
 
-Tu dois concevoir 4 scènes qui RACONTENT réellement le script ET qui restent immédiatement reconnaissables comme appartenant au TYPE DE CONTENU choisi.
+Tu dois concevoir 4 scÃ¨nes qui RACONTENT rÃ©ellement le script ET qui restent immÃ©diatement reconnaissables comme appartenant au TYPE DE CONTENU choisi.
 
-Avant d'écrire les visualPrompt, identifie d'abord la famille visuelle à partir de TYPE DE CONTENU et du SUJET.
-La famille visuelle doit rester cohérente sur les 4 scènes.
+Avant d'Ã©crire les visualPrompt, identifie d'abord la famille visuelle Ã  partir de TYPE DE CONTENU et du SUJET.
+La famille visuelle doit rester cohÃ©rente sur les 4 scÃ¨nes.
 
-Chaque scène correspond à environ 5 secondes et doit avoir :
+Chaque scÃ¨ne correspond Ã  environ 5 secondes et doit avoir :
 - son propre morceau de voix dans voiceText ;
-- son texte écran court ;
-- une action visuelle concrète et différente ;
-- un visualPrompt autonome, directement exploitable par un générateur vidéo ;
+- son texte Ã©cran court ;
+- une action visuelle concrÃ¨te et diffÃ©rente ;
+- un visualPrompt autonome, directement exploitable par un gÃ©nÃ©rateur vidÃ©o ;
 - un lien visuel clair avec le type de contenu et le sujet.
 
-RÈGLES NARRATIVES :
-- scène 1 = accroche visuelle immédiate et identification claire du sujet ;
-- scène 2 = développement concret de l'idée ;
-- scène 3 = message central, révélation ou point fort ;
-- scène 4 = conclusion visuelle et fermeture naturelle ;
-- les 4 voiceText, lus à la suite, doivent raconter le même message que le script global ;
-- chaque scène doit illustrer le SENS de son voiceText sans perdre l'identité visuelle du type de contenu.
+RÃˆGLES NARRATIVES :
+- scÃ¨ne 1 = accroche visuelle immÃ©diate et identification claire du sujet ;
+- scÃ¨ne 2 = dÃ©veloppement concret de l'idÃ©e ;
+- scÃ¨ne 3 = message central, rÃ©vÃ©lation ou point fort ;
+- scÃ¨ne 4 = conclusion visuelle et fermeture naturelle ;
+- les 4 voiceText, lus Ã  la suite, doivent raconter le mÃªme message que le script global ;
+- chaque scÃ¨ne doit illustrer le SENS de son voiceText sans perdre l'identitÃ© visuelle du type de contenu.
 
 ADAPTATION VISUELLE OBLIGATOIRE SELON LE TYPE :
 
 1. SI TYPE DE CONTENU = "Tirage du jour"
 
 OBJECTIF VISUEL :
-La vidéo doit commencer comme un vrai tirage de tarot, puis transformer progressivement le message de la carte en scènes humaines et concrètes.
+La vidÃ©o doit commencer comme un vrai tirage de tarot, puis transformer progressivement le message de la carte en scÃ¨nes humaines et concrÃ¨tes.
 
-RÈGLE ABSOLUE :
-UNE SEULE scène peut montrer une carte de tarot : la scène 1.
+RÃˆGLE ABSOLUE :
+UNE SEULE scÃ¨ne peut montrer une carte de tarot : la scÃ¨ne 1.
 
-SCÈNE 1 — LE TIRAGE
-- le spectateur doit comprendre immédiatement qu'il regarde un tirage de tarot ;
-- montrer une personne qui tire ou révèle une seule carte ;
-- si le sujet cite une carte précise, cette carte est celle révélée ;
-- la carte peut être clairement visible dans cette scène ;
-- décor lumineux, réaliste, élégant et crédible ;
-- éviter les accessoires mystiques inutiles ;
-- cette scène introduit le message de la carte.
+SCÃˆNE 1 â€” LE TIRAGE
+- le spectateur doit comprendre immÃ©diatement qu'il regarde un tirage de tarot ;
+- montrer une personne qui tire ou rÃ©vÃ¨le une seule carte ;
+- si le sujet cite une carte prÃ©cise, cette carte est celle rÃ©vÃ©lÃ©e ;
+- la carte peut Ãªtre clairement visible dans cette scÃ¨ne ;
+- dÃ©cor lumineux, rÃ©aliste, Ã©lÃ©gant et crÃ©dible ;
+- Ã©viter les accessoires mystiques inutiles ;
+- cette scÃ¨ne introduit le message de la carte.
 
-SCÈNE 2 — LE SENS DU MESSAGE
+SCÃˆNE 2 â€” LE SENS DU MESSAGE
 - NE PLUS MONTRER DE TAROT ;
-- illustrer concrètement la première signification importante de la carte ;
-- utiliser une situation humaine réaliste correspondant au voiceText ;
-- conserver si possible la même personne que dans la scène 1 ;
-- créer une vraie action, pas une simple pose ;
-- le décor peut changer logiquement pour raconter le message.
+- illustrer concrÃ¨tement la premiÃ¨re signification importante de la carte ;
+- utiliser une situation humaine rÃ©aliste correspondant au voiceText ;
+- conserver si possible la mÃªme personne que dans la scÃ¨ne 1 ;
+- crÃ©er une vraie action, pas une simple pose ;
+- le dÃ©cor peut changer logiquement pour raconter le message.
 
-SCÈNE 3 — LA MISE EN SITUATION
+SCÃˆNE 3 â€” LA MISE EN SITUATION
 - NE MONTRER AUCUNE CARTE ;
 - NE MONTRER AUCUN JEU DE TAROT ;
-- transformer le message central en action concrète ;
-- montrer la personne en train de vivre, décider, commencer, choisir, avancer ou agir selon le sens exact du voiceText ;
-- cette scène doit faire progresser l'histoire visuellement.
+- transformer le message central en action concrÃ¨te ;
+- montrer la personne en train de vivre, dÃ©cider, commencer, choisir, avancer ou agir selon le sens exact du voiceText ;
+- cette scÃ¨ne doit faire progresser l'histoire visuellement.
 
-SCÈNE 4 — LA CONCLUSION
+SCÃˆNE 4 â€” LA CONCLUSION
 - NE PAS REVENIR AU TIRAGE ;
 - NE MONTRER AUCUNE CARTE ;
 - conclure le message par une action humaine claire ;
-- la dernière image doit donner visuellement le sentiment correspondant à la conclusion du voiceText ;
-- créer une véritable fin de mini-histoire.
+- la derniÃ¨re image doit donner visuellement le sentiment correspondant Ã  la conclusion du voiceText ;
+- crÃ©er une vÃ©ritable fin de mini-histoire.
 
-INTERDICTION ABSOLUE POUR LES SCÈNES 2, 3 ET 4 :
-Chaque visualPrompt des scènes 2, 3 et 4 doit obligatoirement contenir exactement cette instruction en anglais :
+INTERDICTION ABSOLUE POUR LES SCÃˆNES 2, 3 ET 4 :
+Chaque visualPrompt des scÃ¨nes 2, 3 et 4 doit obligatoirement contenir exactement cette instruction en anglais :
 
 "No tarot cards. No tarot deck. No oracle cards. No divination objects. Do not show or recreate the tarot card from scene 1."
 
 IMPORTANT :
-- ne jamais demander de conserver la carte comme fil rouge après la scène 1 ;
+- ne jamais demander de conserver la carte comme fil rouge aprÃ¨s la scÃ¨ne 1 ;
 - ne jamais demander de remettre la carte au premier plan ;
 - ne jamais revenir sur la table de tarot pour conclure ;
-- la continuité entre les scènes repose principalement sur la même personne, son apparence, sa tenue, la lumière et le style cinématographique ;
-- les scènes 2, 3 et 4 racontent LE MESSAGE de la carte et non la carte elle-même ;
-- ne transforme cependant pas ces scènes en images génériques sans rapport avec le voiceText ;
-- chaque action doit illustrer précisément ce qui est raconté.
+- la continuitÃ© entre les scÃ¨nes repose principalement sur la mÃªme personne, son apparence, sa tenue, la lumiÃ¨re et le style cinÃ©matographique ;
+- les scÃ¨nes 2, 3 et 4 racontent LE MESSAGE de la carte et non la carte elle-mÃªme ;
+- ne transforme cependant pas ces scÃ¨nes en images gÃ©nÃ©riques sans rapport avec le voiceText ;
+- chaque action doit illustrer prÃ©cisÃ©ment ce qui est racontÃ©.
 
 2. SI TYPE DE CONTENU = "Message du jour"
-- l'univers peut être lifestyle, symbolique ou contemplatif ;
-- aucune carte de tarot n'est nécessaire sauf si le sujet en parle explicitement ;
-- privilégie des situations humaines simples, lumineuses et modernes qui traduisent le message.
+- l'univers peut Ãªtre lifestyle, symbolique ou contemplatif ;
+- aucune carte de tarot n'est nÃ©cessaire sauf si le sujet en parle explicitement ;
+- privilÃ©gie des situations humaines simples, lumineuses et modernes qui traduisent le message.
 
 3. SI TYPE DE CONTENU = "Voyance"
-- l'univers doit être identifiable comme consultation ou pratique de voyance sans caricature ;
-- cartes, oracle ou outils divinatoires peuvent être présents seulement s'ils correspondent au sujet ;
-- conserver une esthétique professionnelle, chaleureuse et crédible ;
-- ne pas transformer la scène en décor occulte sombre ou excessivement mystique.
+- l'univers doit Ãªtre identifiable comme consultation ou pratique de voyance sans caricature ;
+- cartes, oracle ou outils divinatoires peuvent Ãªtre prÃ©sents seulement s'ils correspondent au sujet ;
+- conserver une esthÃ©tique professionnelle, chaleureuse et crÃ©dible ;
+- ne pas transformer la scÃ¨ne en dÃ©cor occulte sombre ou excessivement mystique.
 
-4. SI TYPE DE CONTENU = "Psycho-énergétique"
-- privilégie des scènes de détente, respiration, écoute, environnement calme, mouvement doux ou pratique énergétique sobre ;
+4. SI TYPE DE CONTENU = "Psycho-Ã©nergÃ©tique"
+- privilÃ©gie des scÃ¨nes de dÃ©tente, respiration, Ã©coute, environnement calme, mouvement doux ou pratique Ã©nergÃ©tique sobre ;
 - pas de tarot, oracle ou accessoires de voyance sauf si le sujet le demande explicitement ;
-- esthétique lumineuse, rassurante et professionnelle.
+- esthÃ©tique lumineuse, rassurante et professionnelle.
 
-5. SI TYPE DE CONTENU = "Présentation d'une séance"
-- montrer concrètement le déroulement, l'accueil, la préparation, l'installation ou l'ambiance d'une séance ;
+5. SI TYPE DE CONTENU = "PrÃ©sentation d'une sÃ©ance"
+- montrer concrÃ¨tement le dÃ©roulement, l'accueil, la prÃ©paration, l'installation ou l'ambiance d'une sÃ©ance ;
 - donner une impression professionnelle, simple et rassurante ;
-- les quatre scènes doivent suivre une progression logique comme un mini parcours client.
+- les quatre scÃ¨nes doivent suivre une progression logique comme un mini parcours client.
 
-6. SI TYPE DE CONTENU = "Présentation Klarys"
-- montrer une identité professionnelle cohérente et moderne ;
-- faire apparaître des éléments pertinents de l'activité selon le sujet sans mélanger inutilement toutes les activités dans chaque scène ;
-- privilégier une narration humaine et crédible.
+6. SI TYPE DE CONTENU = "PrÃ©sentation Klarys"
+- montrer une identitÃ© professionnelle cohÃ©rente et moderne ;
+- faire apparaÃ®tre des Ã©lÃ©ments pertinents de l'activitÃ© selon le sujet sans mÃ©langer inutilement toutes les activitÃ©s dans chaque scÃ¨ne ;
+- privilÃ©gier une narration humaine et crÃ©dible.
 
-7. SI LE SUJET CONCERNE LA LITHOTHÉRAPIE
-- la pierre, le bracelet ou le bijou concerné doit rester le sujet principal ;
-- montrer matière, couleur, porté, manipulation ou usage ;
-- ne jamais remplacer le produit par une scène lifestyle générique.
+7. SI LE SUJET CONCERNE LA LITHOTHÃ‰RAPIE
+- la pierre, le bracelet ou le bijou concernÃ© doit rester le sujet principal ;
+- montrer matiÃ¨re, couleur, portÃ©, manipulation ou usage ;
+- ne jamais remplacer le produit par une scÃ¨ne lifestyle gÃ©nÃ©rique.
 
 8. SI LE SUJET CONCERNE UN PRODUIT OU LA BOUTIQUE
-- le produit réel ou sa catégorie doit rester clairement identifiable dans chaque scène pertinente ;
-- montrer successivement découverte, détail, utilisation ou bénéfice visuel, puis conclusion ;
-- ne pas inventer d'autres produits qui détournent l'attention.
+- le produit rÃ©el ou sa catÃ©gorie doit rester clairement identifiable dans chaque scÃ¨ne pertinente ;
+- montrer successivement dÃ©couverte, dÃ©tail, utilisation ou bÃ©nÃ©fice visuel, puis conclusion ;
+- ne pas inventer d'autres produits qui dÃ©tournent l'attention.
 
-RÈGLES DE CONTINUITÉ :
-- les 4 scènes doivent sembler appartenir à la même vidéo ;
-- même personne, même apparence générale et même tenue si une personne récurrente apparaît ;
-- décor cohérent ou transition logique entre décors ;
-- palette lumineuse et style cinématographique cohérents ;
-- conserver l'objet principal ou le sujet comme fil rouge lorsqu'il est essentiel à la compréhension ;
-- chaque scène doit cependant avoir une action et un cadrage différents.
+RÃˆGLES DE CONTINUITÃ‰ :
+- les 4 scÃ¨nes doivent sembler appartenir Ã  la mÃªme vidÃ©o ;
+- mÃªme personne, mÃªme apparence gÃ©nÃ©rale et mÃªme tenue si une personne rÃ©currente apparaÃ®t ;
+- dÃ©cor cohÃ©rent ou transition logique entre dÃ©cors ;
+- palette lumineuse et style cinÃ©matographique cohÃ©rents ;
+- conserver l'objet principal ou le sujet comme fil rouge lorsqu'il est essentiel Ã  la comprÃ©hension ;
+- chaque scÃ¨ne doit cependant avoir une action et un cadrage diffÃ©rents.
 
-RÈGLES ANTI-RÉPÉTITION :
-- ne montre pas quatre fois exactement les mêmes mains et le même cadrage ;
+RÃˆGLES ANTI-RÃ‰PÃ‰TITION :
+- ne montre pas quatre fois exactement les mÃªmes mains et le mÃªme cadrage ;
 - ne montre pas quatre fois une carte statique sur une table ;
 - ne montre pas quatre fois un gros plan identique ;
-- varie plans serrés, plans moyens, angles et mouvements de caméra ;
-- bougies, cristaux, fumée, tasse, pendule et accessoires mystiques ne doivent jamais être ajoutés automatiquement ;
-- les accessoires doivent servir le sujet, jamais simplement décorer ;
-- évite les scènes génériques qui pourraient convenir à n'importe quel thème ;
-- esthétique réaliste, élégante, lumineuse et cinématographique ;
+- varie plans serrÃ©s, plans moyens, angles et mouvements de camÃ©ra ;
+- bougies, cristaux, fumÃ©e, tasse, pendule et accessoires mystiques ne doivent jamais Ãªtre ajoutÃ©s automatiquement ;
+- les accessoires doivent servir le sujet, jamais simplement dÃ©corer ;
+- Ã©vite les scÃ¨nes gÃ©nÃ©riques qui pourraient convenir Ã  n'importe quel thÃ¨me ;
+- esthÃ©tique rÃ©aliste, Ã©lÃ©gante, lumineuse et cinÃ©matographique ;
 - format vertical 9:16 ;
-- aucun logo, sous-titre, texte lisible ou watermark dans l'image générée.
+- aucun logo, sous-titre, texte lisible ou watermark dans l'image gÃ©nÃ©rÃ©e.
 
-COHÉRENCE SUJET / PROMPT :
-- chaque visualPrompt doit être compatible avec le type et le sujet ;
-- n'ajoute jamais une interdiction qui contredit le sujet, par exemple "no tarot card visible" pour un tirage du jour sur une carte précise ;
-- n'ajoute jamais de carnet, laptop, café ou bureau uniquement pour représenter abstraitement "passer à l'action" si cela fait perdre l'identité du contenu ;
-- pour traduire une idée abstraite, trouve d'abord une action compatible avec l'univers visuel du contenu ;
-- si le sujet contient un objet central précis, conserve cet objet comme ancrage narratif.
-- EXCEPTION PRIORITAIRE : pour "Tirage du jour", une carte de tarot éventuellement montrée en scène 1 ne doit JAMAIS être conservée comme objet ou ancrage narratif dans les scènes 2, 3 et 4 ;
-- pour "Tirage du jour", la continuité narrative après la scène 1 repose sur la personne, l'ambiance et surtout le sens du message, jamais sur la présence de la carte ;
+COHÃ‰RENCE SUJET / PROMPT :
+- chaque visualPrompt doit Ãªtre compatible avec le type et le sujet ;
+- n'ajoute jamais une interdiction qui contredit le sujet, par exemple "no tarot card visible" pour un tirage du jour sur une carte prÃ©cise ;
+- n'ajoute jamais de carnet, laptop, cafÃ© ou bureau uniquement pour reprÃ©senter abstraitement "passer Ã  l'action" si cela fait perdre l'identitÃ© du contenu ;
+- pour traduire une idÃ©e abstraite, trouve d'abord une action compatible avec l'univers visuel du contenu ;
+- si le sujet contient un objet central prÃ©cis, conserve cet objet comme ancrage narratif.
+- EXCEPTION PRIORITAIRE : pour "Tirage du jour", une carte de tarot Ã©ventuellement montrÃ©e en scÃ¨ne 1 ne doit JAMAIS Ãªtre conservÃ©e comme objet ou ancrage narratif dans les scÃ¨nes 2, 3 et 4 ;
+- pour "Tirage du jour", la continuitÃ© narrative aprÃ¨s la scÃ¨ne 1 repose sur la personne, l'ambiance et surtout le sens du message, jamais sur la prÃ©sence de la carte ;
 
-Le champ visualIdea décrit uniquement la direction artistique commune aux 4 scènes.
-Le tableau scenes contient les instructions narratives précises.
+Le champ visualIdea dÃ©crit uniquement la direction artistique commune aux 4 scÃ¨nes.
+Le tableau scenes contient les instructions narratives prÃ©cises.
 
 IMPORTANT POUR visualPrompt :
-- écris chaque visualPrompt en anglais pour optimiser l'interprétation du générateur vidéo ;
-- décris le sujet, l'action, le décor, le cadrage, le mouvement de caméra et l'ambiance ;
-- indique explicitement la continuité utile avec la scène précédente quand nécessaire ;
+- Ã©cris chaque visualPrompt en anglais pour optimiser l'interprÃ©tation du gÃ©nÃ©rateur vidÃ©o ;
+- dÃ©cris le sujet, l'action, le dÃ©cor, le cadrage, le mouvement de camÃ©ra et l'ambiance ;
+- indique explicitement la continuitÃ© utile avec la scÃ¨ne prÃ©cÃ©dente quand nÃ©cessaire ;
 - indique clairement l'objet principal qui doit rester visible lorsqu'il est essentiel au sujet ;
-- n'inclus aucun texte à afficher dans l'image ;
+- n'inclus aucun texte Ã  afficher dans l'image ;
 - ne recopie pas simplement le script dans le prompt visuel ;
-- évite les formulations contradictoires ;
-- écris des prompts concrets et filmables en environ 5 secondes.
+- Ã©vite les formulations contradictoires ;
+- Ã©cris des prompts concrets et filmables en environ 5 secondes.
 
-Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement cette structure :
+RÃ©ponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement cette structure :
 
 {
   "title": "Titre court",
   "hook": "Accroche",
   "script": "Script voix complet d'environ 20 secondes",
   "screenText": [
-    "Texte scène 1",
-    "Texte scène 2",
-    "Texte scène 3",
-    "Texte scène 4"
+    "Texte scÃ¨ne 1",
+    "Texte scÃ¨ne 2",
+    "Texte scÃ¨ne 3",
+    "Texte scÃ¨ne 4"
   ],
-  "caption": "Légende TikTok naturelle sans hashtag",
+  "caption": "LÃ©gende TikTok naturelle sans hashtag",
   "hashtags": [
     "#hashtag1",
     "#hashtag2",
@@ -755,30 +735,30 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
     "#hashtag5",
     "#hashtag6"
   ],
-  "visualIdea": "Direction artistique commune, concise et concrète",
+  "visualIdea": "Direction artistique commune, concise et concrÃ¨te",
   "scenes": [
     {
       "role": "Accroche",
-      "voiceText": "Première partie du script",
-      "screenText": "Texte écran scène 1",
+      "voiceText": "PremiÃ¨re partie du script",
+      "screenText": "Texte Ã©cran scÃ¨ne 1",
       "visualPrompt": "English cinematic prompt for scene 1"
     },
     {
-      "role": "Développement",
-      "voiceText": "Deuxième partie du script",
-      "screenText": "Texte écran scène 2",
+      "role": "DÃ©veloppement",
+      "voiceText": "DeuxiÃ¨me partie du script",
+      "screenText": "Texte Ã©cran scÃ¨ne 2",
       "visualPrompt": "English cinematic prompt for scene 2"
     },
     {
       "role": "Message central",
-      "voiceText": "Troisième partie du script",
-      "screenText": "Texte écran scène 3",
+      "voiceText": "TroisiÃ¨me partie du script",
+      "screenText": "Texte Ã©cran scÃ¨ne 3",
       "visualPrompt": "English cinematic prompt for scene 3"
     },
     {
       "role": "Conclusion",
-      "voiceText": "Dernière partie du script",
-      "screenText": "Texte écran scène 4",
+      "voiceText": "DerniÃ¨re partie du script",
+      "screenText": "Texte Ã©cran scÃ¨ne 4",
       "visualPrompt": "English cinematic prompt for scene 4"
     }
   ],
@@ -834,7 +814,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
     if (!response.ok) {
       const message =
         data?.error?.message ??
-        "OpenAI a refusé la génération du contenu TikTok.";
+        "OpenAI a refusÃ© la gÃ©nÃ©ration du contenu TikTok.";
 
       return NextResponse.json(
         {
@@ -844,7 +824,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
             response.status,
 
           error:
-            `OpenAI HTTP ${response.status} — ${message}`,
+            `OpenAI HTTP ${response.status} â€” ${message}`,
         },
         {
           status:
@@ -864,7 +844,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
           success: false,
 
           error:
-            "OpenAI n'a retourné aucun contenu exploitable.",
+            "OpenAI n'a retournÃ© aucun contenu exploitable.",
         },
         {
           status: 502,
@@ -895,7 +875,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
           success: false,
 
           error:
-            "OpenAI a retourné un format inattendu. Réessaie la génération.",
+            "OpenAI a retournÃ© un format inattendu. RÃ©essaie la gÃ©nÃ©ration.",
         },
         {
           status: 502,
@@ -934,7 +914,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
           success: false,
 
           error:
-            "Le contenu généré est incomplet. Réessaie la génération.",
+            "Le contenu gÃ©nÃ©rÃ© est incomplet. RÃ©essaie la gÃ©nÃ©ration.",
         },
         {
           status: 502,
@@ -951,7 +931,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
           success: false,
 
           error:
-            "L'IA n'a pas généré suffisamment de hashtags pertinents. Réessaie la génération.",
+            "L'IA n'a pas gÃ©nÃ©rÃ© suffisamment de hashtags pertinents. RÃ©essaie la gÃ©nÃ©ration.",
         },
         {
           status: 502,

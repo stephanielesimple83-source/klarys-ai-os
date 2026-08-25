@@ -27,6 +27,9 @@ const FFMPEG_CORE_BASE_URL =
 const FONT_URL =
   "https://raw.githubusercontent.com/ffmpegwasm/testdata/master/arial.ttf";
 
+const SAVED_FINAL_VIDEO_KEY =
+  "klarys-ai-os:tiktok-studio:saved-final-video";
+
 function wrapText(
   value: string,
   maxChars = 28,
@@ -160,6 +163,41 @@ export default function TikTokVideoAssembler({
     setVoiceVideoUrl,
   ] =
     useState("");
+
+  const [
+    saveLoading,
+    setSaveLoading,
+  ] =
+    useState(false);
+
+  const [
+    saveMessage,
+    setSaveMessage,
+  ] =
+    useState("");
+
+  const [
+    savedVideoUrl,
+    setSavedVideoUrl,
+  ] =
+    useState("");
+
+  useEffect(() => {
+    try {
+      const saved =
+        window.localStorage.getItem(
+          SAVED_FINAL_VIDEO_KEY,
+        );
+
+      if (saved) {
+        setSavedVideoUrl(
+          saved,
+        );
+      }
+    } catch {
+      // localStorage indisponible.
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -719,6 +757,17 @@ export default function TikTokVideoAssembler({
     setVoiceMessage(
       "Génération de la voix IA...",
     );
+    setSavedVideoUrl("");
+    setSaveMessage("");
+
+    try {
+      window.localStorage.removeItem(
+        SAVED_FINAL_VIDEO_KEY,
+      );
+    } catch {
+      // localStorage indisponible.
+    }
+
 
     try {
       if (voiceVideoUrl) {
@@ -908,6 +957,119 @@ export default function TikTokVideoAssembler({
       );
     } finally {
       setVoiceLoading(false);
+    }
+  }
+
+  async function saveFinalVideo() {
+    if (!voiceVideoUrl) {
+      setSaveMessage(
+        "La vidéo finale avec voix n'est pas encore prête.",
+      );
+
+      return;
+    }
+
+    setSaveLoading(true);
+    setSaveMessage(
+      "Sauvegarde de la vidéo finale...",
+    );
+
+    try {
+      const videoResponse =
+        await fetch(
+          voiceVideoUrl,
+        );
+
+      if (!videoResponse.ok) {
+        throw new Error(
+          "Impossible de lire la vidéo finale dans le navigateur.",
+        );
+      }
+
+      const videoBlob =
+        await videoResponse.blob();
+
+      const response =
+        await fetch(
+          "/api/ai/video/save",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "video/mp4",
+            },
+
+            body:
+              videoBlob,
+          },
+        );
+
+      const rawResponse =
+        await response.text();
+
+      let data:
+        {
+          success?: boolean;
+          url?: string;
+          pathname?: string;
+          error?: string;
+        } =
+        {};
+
+      try {
+        data =
+          rawResponse
+            ? JSON.parse(
+                rawResponse,
+              )
+            : {};
+      } catch {
+        data = {
+          success:
+            false,
+
+          error:
+            rawResponse ||
+            "Réponse de sauvegarde invalide.",
+        };
+      }
+
+      if (
+        !response.ok ||
+        !data.success ||
+        !data.url
+      ) {
+        throw new Error(
+          data.error ||
+            "Impossible de sauvegarder la vidéo dans Vercel Blob.",
+        );
+      }
+
+      setSavedVideoUrl(
+        data.url,
+      );
+
+      setSaveMessage(
+        "Vidéo finale sauvegardée avec succès.",
+      );
+
+      try {
+        window.localStorage.setItem(
+          SAVED_FINAL_VIDEO_KEY,
+          data.url,
+        );
+      } catch {
+        // La vidéo est quand même sauvegardée dans Vercel Blob.
+      }
+    } catch (error) {
+      setSaveMessage(
+        error instanceof Error
+          ? error.message
+          : "Impossible de sauvegarder la vidéo finale.",
+      );
+    } finally {
+      setSaveLoading(false);
     }
   }
 
@@ -1172,13 +1334,60 @@ export default function TikTokVideoAssembler({
                 />
               </div>
 
-              <p className="mt-4 text-center text-sm text-slate-400">
-                Prochaine étape :
-                sauvegarder ce MP4 final
-                dans Vercel Blob puis
-                préparer l&apos;envoi
-                vers TikTok.
-              </p>
+              <div className="mt-6 text-center">
+                <button
+                  type="button"
+                  onClick={
+                    saveFinalVideo
+                  }
+                  disabled={
+                    saveLoading
+                  }
+                  className="rounded-xl bg-sky-500 px-6 py-3 font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saveLoading
+                    ? "☁️ Sauvegarde en cours..."
+                    : savedVideoUrl
+                      ? "✓ Vidéo sauvegardée"
+                      : "☁️ Sauvegarder la vidéo finale"}
+                </button>
+
+                {saveMessage && (
+                  <p className="mt-3 text-sm text-slate-300">
+                    {saveMessage}
+                  </p>
+                )}
+
+                {savedVideoUrl && (
+                  <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-left">
+                    <p className="font-semibold text-emerald-300">
+                      ✓ Vidéo conservée dans Vercel Blob
+                    </p>
+
+                    <p className="mt-2 break-all text-xs text-slate-400">
+                      {savedVideoUrl}
+                    </p>
+
+                    <a
+                      href={
+                        savedVideoUrl
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-block text-sm font-semibold text-sky-300 underline underline-offset-4"
+                    >
+                      Ouvrir la vidéo sauvegardée
+                    </a>
+                  </div>
+                )}
+
+                <p className="mt-4 text-sm text-slate-400">
+                  Une fois sauvegardée,
+                  cette URL pourra être
+                  utilisée pour préparer
+                  l&apos;envoi vers TikTok.
+                </p>
+              </div>
             </div>
           )}
         </section>

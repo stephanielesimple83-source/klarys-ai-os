@@ -1774,6 +1774,9 @@ ${visualIdentity}
                     generated.hook,
                     ...generated.screenText,
                   ]}
+                  voiceScript={
+                    generated.script
+                  }
                 />
               )}
             </div>

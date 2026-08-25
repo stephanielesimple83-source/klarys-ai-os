@@ -18,6 +18,7 @@ import {
 type TikTokVideoAssemblerProps = {
   videoUrls: string[];
   overlayTexts: string[];
+  voiceScript: string;
 };
 
 const FFMPEG_CORE_BASE_URL =
@@ -81,6 +82,7 @@ function wrapText(
 export default function TikTokVideoAssembler({
   videoUrls,
   overlayTexts,
+  voiceScript,
 }: TikTokVideoAssemblerProps) {
   const ffmpegRef =
     useRef<FFmpeg | null>(
@@ -135,6 +137,30 @@ export default function TikTokVideoAssembler({
   ] =
     useState("");
 
+  const [
+    voiceLoading,
+    setVoiceLoading,
+  ] =
+    useState(false);
+
+  const [
+    voiceProgress,
+    setVoiceProgress,
+  ] =
+    useState(0);
+
+  const [
+    voiceMessage,
+    setVoiceMessage,
+  ] =
+    useState("");
+
+  const [
+    voiceVideoUrl,
+    setVoiceVideoUrl,
+  ] =
+    useState("");
+
   useEffect(() => {
     return () => {
       if (finalVideoUrl) {
@@ -148,10 +174,17 @@ export default function TikTokVideoAssembler({
           textVideoUrl,
         );
       }
+
+      if (voiceVideoUrl) {
+        URL.revokeObjectURL(
+          voiceVideoUrl,
+        );
+      }
     };
   }, [
     finalVideoUrl,
     textVideoUrl,
+    voiceVideoUrl,
   ]);
 
   async function getFFmpeg() {
@@ -240,6 +273,16 @@ export default function TikTokVideoAssembler({
         );
       }
 
+      if (voiceVideoUrl) {
+        URL.revokeObjectURL(
+          voiceVideoUrl,
+        );
+
+        setVoiceVideoUrl(
+          "",
+        );
+      }
+
       const ffmpeg =
         await getFFmpeg();
 
@@ -251,6 +294,8 @@ export default function TikTokVideoAssembler({
         "list.txt",
         "final.mp4",
         "texted.mp4",
+        "voice.mp3",
+        "voiced.mp4",
         "arial.ttf",
         "text1.txt",
         "text2.txt",
@@ -484,6 +529,16 @@ export default function TikTokVideoAssembler({
         );
       }
 
+      if (voiceVideoUrl) {
+        URL.revokeObjectURL(
+          voiceVideoUrl,
+        );
+
+        setVoiceVideoUrl(
+          "",
+        );
+      }
+
       const ffmpeg =
         await getFFmpeg();
 
@@ -636,6 +691,223 @@ export default function TikTokVideoAssembler({
       );
     } finally {
       setTextLoading(false);
+    }
+  }
+
+  async function addVoiceOver() {
+    if (!textVideoUrl) {
+      setVoiceMessage(
+        "Ajoute d'abord les textes à la vidéo.",
+      );
+
+      return;
+    }
+
+    const speechText =
+      voiceScript.trim();
+
+    if (!speechText) {
+      setVoiceMessage(
+        "Aucun script n'est disponible pour la voix.",
+      );
+
+      return;
+    }
+
+    setVoiceLoading(true);
+    setVoiceProgress(0);
+    setVoiceMessage(
+      "Génération de la voix IA...",
+    );
+
+    try {
+      if (voiceVideoUrl) {
+        URL.revokeObjectURL(
+          voiceVideoUrl,
+        );
+
+        setVoiceVideoUrl(
+          "",
+        );
+      }
+
+      const response =
+        await fetch(
+          "/api/ai/voice",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                text:
+                  speechText,
+              }),
+          },
+        );
+
+      if (!response.ok) {
+        const rawError =
+          await response.text();
+
+        let errorMessage =
+          rawError;
+
+        try {
+          const parsed =
+            JSON.parse(
+              rawError,
+            ) as {
+              error?: string;
+            };
+
+          errorMessage =
+            parsed.error ||
+            rawError;
+        } catch {
+          // La réponse n'est pas du JSON.
+        }
+
+        throw new Error(
+          errorMessage ||
+            "OpenAI n'a pas pu générer la voix.",
+        );
+      }
+
+      setVoiceProgress(30);
+      setVoiceMessage(
+        "Voix créée. Ajout à la vidéo...",
+      );
+
+      const audioBuffer =
+        await response.arrayBuffer();
+
+      const ffmpeg =
+        await getFFmpeg();
+
+      for (
+        const filename of [
+          "voice.mp3",
+          "voiced.mp4",
+        ]
+      ) {
+        try {
+          await ffmpeg.deleteFile(
+            filename,
+          );
+        } catch {
+          // Fichier absent.
+        }
+      }
+
+      await ffmpeg.writeFile(
+        "voice.mp3",
+        new Uint8Array(
+          audioBuffer,
+        ),
+      );
+
+      setVoiceProgress(55);
+
+      /*
+       * On garde exactement la vidéo
+       * de 20 secondes. Si la voix est
+       * plus courte, FFmpeg ajoute du
+       * silence à la fin. Si elle est
+       * plus longue, elle est coupée à
+       * 20 secondes.
+       */
+      const exitCode =
+        await ffmpeg.exec([
+          "-i",
+          "texted.mp4",
+          "-i",
+          "voice.mp3",
+          "-map",
+          "0:v:0",
+          "-map",
+          "1:a:0",
+          "-c:v",
+          "copy",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "192k",
+          "-af",
+          "loudnorm=I=-16:TP=-1.5:LRA=11,apad=pad_dur=20",
+          "-t",
+          "20",
+          "-movflags",
+          "+faststart",
+          "voiced.mp4",
+        ]);
+
+      if (
+        exitCode !== 0
+      ) {
+        throw new Error(
+          "FFmpeg n'a pas réussi à ajouter la voix.",
+        );
+      }
+
+      setVoiceProgress(85);
+      setVoiceMessage(
+        "Préparation de la vidéo avec voix...",
+      );
+
+      const output =
+        await ffmpeg.readFile(
+          "voiced.mp4",
+        );
+
+      if (
+        typeof output ===
+        "string"
+      ) {
+        throw new Error(
+          "Format vidéo inattendu après ajout de la voix.",
+        );
+      }
+
+      const bytes =
+        new Uint8Array(
+          output,
+        );
+
+      const blob =
+        new Blob(
+          [bytes],
+          {
+            type:
+              "video/mp4",
+          },
+        );
+
+      const url =
+        URL.createObjectURL(
+          blob,
+        );
+
+      setVoiceVideoUrl(
+        url,
+      );
+
+      setVoiceProgress(100);
+      setVoiceMessage(
+        "Voix IA ajoutée avec succès.",
+      );
+    } catch (error) {
+      setVoiceMessage(
+        error instanceof Error
+          ? error.message
+          : "Impossible d'ajouter la voix.",
+      );
+    } finally {
+      setVoiceLoading(false);
     }
   }
 
@@ -811,6 +1083,101 @@ export default function TikTokVideoAssembler({
                 puis sauvegarder la
                 vidéo finale dans
                 Vercel Blob.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {textVideoUrl && (
+        <section className="mt-7 rounded-3xl border border-amber-500/30 bg-amber-500/5 p-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-300">
+            Étape 6
+          </p>
+
+          <h3 className="mt-2 text-xl font-bold text-white">
+            Ajouter la voix IA
+          </h3>
+
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            OpenAI transforme automatiquement
+            le script en voix française puis
+            FFmpeg l&apos;ajoute à la vidéo
+            de 20 secondes. La voix utilisée
+            est générée par intelligence
+            artificielle.
+          </p>
+
+          <button
+            type="button"
+            onClick={
+              addVoiceOver
+            }
+            disabled={
+              voiceLoading
+            }
+            className="mt-5 rounded-xl bg-amber-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {voiceLoading
+              ? "🎙️ Création de la voix..."
+              : voiceVideoUrl
+                ? "🎙️ Refaire la voix"
+                : "🎙️ Ajouter la voix IA"}
+          </button>
+
+          {(voiceLoading ||
+            voiceProgress > 0 ||
+            voiceMessage) && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-4 text-xs text-slate-400">
+                <span>
+                  {voiceMessage}
+                </span>
+
+                {voiceProgress > 0 && (
+                  <span>
+                    {voiceProgress} %
+                  </span>
+                )}
+              </div>
+
+              {voiceProgress > 0 && (
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full bg-amber-400 transition-all duration-500"
+                    style={{
+                      width:
+                        `${voiceProgress}%`,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {voiceVideoUrl && (
+            <div className="mt-7">
+              <p className="mb-3 font-semibold text-emerald-300">
+                ✓ Vidéo avec textes et voix prête
+              </p>
+
+              <div className="mx-auto max-w-sm overflow-hidden rounded-3xl border border-slate-700 bg-black">
+                <video
+                  src={
+                    voiceVideoUrl
+                  }
+                  controls
+                  playsInline
+                  className="aspect-[9/16] w-full object-contain"
+                />
+              </div>
+
+              <p className="mt-4 text-center text-sm text-slate-400">
+                Prochaine étape :
+                sauvegarder ce MP4 final
+                dans Vercel Blob puis
+                préparer l&apos;envoi
+                vers TikTok.
               </p>
             </div>
           )}

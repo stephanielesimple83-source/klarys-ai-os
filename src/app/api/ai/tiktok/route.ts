@@ -261,6 +261,105 @@ function normalizeContent(
   };
 }
 
+
+function enforceTarotSceneRules(
+  content: GeneratedContent,
+  type: string,
+) {
+  if (
+    type.trim().toLowerCase() !==
+    "tirage du jour"
+  ) {
+    return content;
+  }
+
+  const forbiddenInstruction =
+    "No tarot cards. No tarot deck. No oracle cards. No divination objects. Do not show or recreate the tarot card from scene 1.";
+
+  const cleanedScenes =
+    content.scenes.map(
+      (scene, index) => {
+        if (index === 0) {
+          return scene;
+        }
+
+        let visualPrompt =
+          scene.visualPrompt;
+
+        /*
+         * On retire les formulations les plus fréquentes
+         * qui demandent explicitement de conserver ou
+         * recréer une carte dans les scènes 2 à 4.
+         */
+        visualPrompt =
+          visualPrompt
+            .replace(
+              /same\s+(?:tarot\s+)?card[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /same\s+bateleur\s+card[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /the\s+bateleur\s+card[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /bateleur\s+card[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /tarot\s+card[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /tarot\s+deck[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /two-card\s+spread[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /second\s+card[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /cards?\s+(?:remain|remains|visible|foreground|background)[^.]*\.?/gi,
+              "",
+            )
+            .replace(
+              /\s{2,}/g,
+              " ",
+            )
+            .trim();
+
+        if (
+          !visualPrompt
+            .toLowerCase()
+            .includes(
+              "no tarot cards",
+            )
+        ) {
+          visualPrompt =
+            `${visualPrompt}\n\n${forbiddenInstruction}`.trim();
+        }
+
+        return {
+          ...scene,
+          visualPrompt,
+        };
+      },
+    );
+
+  return {
+    ...content,
+    scenes:
+      cleanedScenes,
+  };
+}
+
 export async function POST(
   request: NextRequest,
 ) {
@@ -505,17 +604,57 @@ RÈGLES NARRATIVES :
 ADAPTATION VISUELLE OBLIGATOIRE SELON LE TYPE :
 
 1. SI TYPE DE CONTENU = "Tirage du jour"
-- le spectateur doit comprendre dès la scène 1 qu'il regarde un vrai tirage de tarot ;
-- si le sujet cite une carte précise, cette carte doit être le fil conducteur visuel de la vidéo ;
-- scène 1 : action de tirage, révélation ou sélection de la carte concernée ;
-- scène 2 : montrer clairement la carte ou un détail symbolique réellement lié à cette carte, avec un cadrage différent ;
-- scène 3 : traduire le sens de la carte par une action ou une situation concrète MAIS conserver un lien visuel clair avec le tirage, par exemple la carte encore présente dans le décor, posée au premier ou second plan ;
-- scène 4 : revenir naturellement au tirage pour conclure, par exemple carte replacée devant la personne, main qui rassemble le jeu, carte mise en valeur dans le plan final ;
-- ne transforme jamais un tirage du jour en vidéo lifestyle générique de carnet, ordinateur, bureau ou développement personnel ;
-- n'écris jamais "no tarot card visible" si le sujet est un tirage de tarot ;
-- évite les cartes inventées ou fantaisistes si une carte précise est demandée : décrire son iconographie de façon sobre et cohérente sans imposer de texte lisible sur la carte ;
-- si le sujet précise Tarot de Marseille, Rider-Waite ou un autre système, respecte ce système ;
-- sinon, reste générique et n'affirme pas un système précis.
+
+OBJECTIF VISUEL :
+La vidéo doit commencer comme un vrai tirage de tarot, puis transformer progressivement le message de la carte en scènes humaines et concrètes.
+
+RÈGLE ABSOLUE :
+UNE SEULE scène peut montrer une carte de tarot : la scène 1.
+
+SCÈNE 1 — LE TIRAGE
+- le spectateur doit comprendre immédiatement qu'il regarde un tirage de tarot ;
+- montrer une personne qui tire ou révèle une seule carte ;
+- si le sujet cite une carte précise, cette carte est celle révélée ;
+- la carte peut être clairement visible dans cette scène ;
+- décor lumineux, réaliste, élégant et crédible ;
+- éviter les accessoires mystiques inutiles ;
+- cette scène introduit le message de la carte.
+
+SCÈNE 2 — LE SENS DU MESSAGE
+- NE PLUS MONTRER DE TAROT ;
+- illustrer concrètement la première signification importante de la carte ;
+- utiliser une situation humaine réaliste correspondant au voiceText ;
+- conserver si possible la même personne que dans la scène 1 ;
+- créer une vraie action, pas une simple pose ;
+- le décor peut changer logiquement pour raconter le message.
+
+SCÈNE 3 — LA MISE EN SITUATION
+- NE MONTRER AUCUNE CARTE ;
+- NE MONTRER AUCUN JEU DE TAROT ;
+- transformer le message central en action concrète ;
+- montrer la personne en train de vivre, décider, commencer, choisir, avancer ou agir selon le sens exact du voiceText ;
+- cette scène doit faire progresser l'histoire visuellement.
+
+SCÈNE 4 — LA CONCLUSION
+- NE PAS REVENIR AU TIRAGE ;
+- NE MONTRER AUCUNE CARTE ;
+- conclure le message par une action humaine claire ;
+- la dernière image doit donner visuellement le sentiment correspondant à la conclusion du voiceText ;
+- créer une véritable fin de mini-histoire.
+
+INTERDICTION ABSOLUE POUR LES SCÈNES 2, 3 ET 4 :
+Chaque visualPrompt des scènes 2, 3 et 4 doit obligatoirement contenir exactement cette instruction en anglais :
+
+"No tarot cards. No tarot deck. No oracle cards. No divination objects. Do not show or recreate the tarot card from scene 1."
+
+IMPORTANT :
+- ne jamais demander de conserver la carte comme fil rouge après la scène 1 ;
+- ne jamais demander de remettre la carte au premier plan ;
+- ne jamais revenir sur la table de tarot pour conclure ;
+- la continuité entre les scènes repose principalement sur la même personne, son apparence, sa tenue, la lumière et le style cinématographique ;
+- les scènes 2, 3 et 4 racontent LE MESSAGE de la carte et non la carte elle-même ;
+- ne transforme cependant pas ces scènes en images génériques sans rapport avec le voiceText ;
+- chaque action doit illustrer précisément ce qui est raconté.
 
 2. SI TYPE DE CONTENU = "Message du jour"
 - l'univers peut être lifestyle, symbolique ou contemplatif ;
@@ -579,6 +718,8 @@ COHÉRENCE SUJET / PROMPT :
 - n'ajoute jamais de carnet, laptop, café ou bureau uniquement pour représenter abstraitement "passer à l'action" si cela fait perdre l'identité du contenu ;
 - pour traduire une idée abstraite, trouve d'abord une action compatible avec l'univers visuel du contenu ;
 - si le sujet contient un objet central précis, conserve cet objet comme ancrage narratif.
+- EXCEPTION PRIORITAIRE : pour "Tirage du jour", une carte de tarot éventuellement montrée en scène 1 ne doit JAMAIS être conservée comme objet ou ancrage narratif dans les scènes 2, 3 et 4 ;
+- pour "Tirage du jour", la continuité narrative après la scène 1 repose sur la personne, l'ambiance et surtout le sens du message, jamais sur la présence de la carte ;
 
 Le champ visualIdea décrit uniquement la direction artistique commune aux 4 scènes.
 Le tableau scenes contient les instructions narratives précises.
@@ -762,9 +903,15 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
       );
     }
 
-    const content =
+    const normalizedContent =
       normalizeContent(
         parsed,
+      );
+
+    const content =
+      enforceTarotSceneRules(
+        normalizedContent,
+        type,
       );
 
     if (

@@ -9,6 +9,13 @@ import {
   useState,
 } from "react";
 
+type GeneratedScene = {
+  role: string;
+  voiceText: string;
+  screenText: string;
+  visualPrompt: string;
+};
+
 type GeneratedContent = {
   title: string;
   hook: string;
@@ -17,6 +24,7 @@ type GeneratedContent = {
   caption: string;
   hashtags: string[];
   visualIdea: string;
+  scenes?: GeneratedScene[];
   duration: string;
 };
 
@@ -576,143 +584,82 @@ export default function TikTokAIStudioPage() {
   function buildScenePrompts(
     content: GeneratedContent,
   ) {
-    const text1 =
-      content.screenText?.[0] ??
-      content.hook;
+    /*
+     * Nouvelle génération : l'API IA fournit directement
+     * quatre prompts narratifs distincts. On les utilise
+     * tels quels au lieu de reconstruire quatre variantes
+     * à partir du script global.
+     */
+    if (
+      Array.isArray(content.scenes) &&
+      content.scenes.length >= 4 &&
+      content.scenes
+        .slice(0, 4)
+        .every(
+          (scene) =>
+            typeof scene.visualPrompt === "string" &&
+            scene.visualPrompt.trim(),
+        )
+    ) {
+      return content.scenes
+        .slice(0, 4)
+        .map((scene, index) => `
+Vertical cinematic TikTok video, portrait 9:16, approximately 5 seconds.
 
-    const text2 =
-      content.screenText?.[1] ??
-      content.script;
+SCENE ${index + 1} - ${scene.role}.
 
-    const text3 =
-      content.screenText?.[2] ??
-      content.script;
+Narrative meaning:
+${scene.voiceText}
 
-    const visualIdentity = `
-Keep the same overall visual identity across all 4 scenes:
-- same warm cinematic color palette
-- same lighting style
-- same room or environment when possible
-- same person, same hands and same wardrobe if a person appears
-- natural realistic movement
-- elegant vertical TikTok aesthetic
-- shallow depth of field
+Visual direction:
+${scene.visualPrompt}
+
+Shared art direction:
+${content.visualIdea}
+
+Continuity and quality rules:
+- realistic natural movement
+- elegant cinematic lighting
+- keep the same person and wardrobe across scenes when the same person is used
+- this scene must have a distinct action and composition from the other scenes
 - no logos
 - no subtitles
 - no readable text
 - no watermark
-- avoid repeating the exact same main object or composition from the previous scene
-    `.trim();
+- do not add candles, crystals, smoke, tarot cards or mystical props unless they are explicitly useful to THIS scene's narrative
+        `.trim());
+    }
 
-    return [
-      `
-Vertical cinematic TikTok video, portrait 9:16.
+    /*
+     * Compatibilité avec les anciens projets sauvegardés :
+     * s'ils ne possèdent pas encore content.scenes, on garde
+     * une génération de secours sans casser leur restauration.
+     */
+    const text1 =
+      content.screenText?.[0] ??
+      content.hook;
+    const text2 =
+      content.screenText?.[1] ??
+      content.script;
+    const text3 =
+      content.screenText?.[2] ??
+      content.script;
+    const text4 =
+      content.screenText?.[3] ??
+      content.caption;
 
-SCENE 1 - OPENING ACTION.
-
-Theme:
-${content.title}
-
-Mood:
-${tone}
-
-Opening idea:
-${content.hook}
-
-Visual inspiration:
-${text1}
-
-Visual direction:
-Start with a clear human action.
-Show hands preparing or handling the main object related to the theme.
-For tarot or intuitive content, show the deck being shuffled, spread or selected.
-Do not begin with a static cup, candle or already-positioned card.
-Use a close-up or medium close-up.
-Create strong movement in the first second.
-
-${visualIdentity}
+    return [text1, text2, text3, text4].map(
+      (text, index) => `
+Vertical cinematic TikTok video, portrait 9:16, approximately 5 seconds.
+Scene ${index + 1}: ${getSceneTitle(index + 1)}.
+Theme: ${content.title}.
+Narrative meaning: ${text}.
+Overall visual direction: ${content.visualIdea}.
+Create one concrete human action that visually expresses this exact meaning.
+Use a distinct composition and action. Avoid generic mystical decoration.
+No logos, subtitles, readable text or watermark.
       `.trim(),
-
-      `
-Vertical cinematic TikTok video, portrait 9:16.
-
-SCENE 2 - DISCOVERY.
-
-Theme:
-${content.title}
-
-Mood:
-${tone}
-
-Story:
-${content.script}
-
-Visual inspiration:
-${text2}
-
-Visual direction:
-Show the next logical action after scene 1.
-Reveal or discover something visually.
-For tarot content, show a card being turned over or placed on the table.
-Change the camera angle from scene 1.
-Use a medium shot or over-the-shoulder composition.
-A candle, notebook or cup may appear only as a secondary background detail.
-The main subject must be different from scene 1.
-
-${visualIdentity}
-      `.trim(),
-
-      `
-Vertical cinematic TikTok video, portrait 9:16.
-
-SCENE 3 - CENTRAL MESSAGE.
-
-Theme:
-${content.title}
-
-Mood:
-${tone}
-
-Central message:
-${content.script}
-
-Visual inspiration:
-${text3}
-
-Visual direction:
-Create the strongest symbolic moment of the sequence.
-Focus on the meaning rather than repeating the same setup.
-For tarot content, highlight the selected card in a new composition, possibly with a slow camera move or a hand pointing to a detail.
-Use a tighter cinematic frame or a subtle push-in.
-Avoid repeating the same table arrangement, same cup placement or same candle framing used before.
-
-${visualIdentity}
-      `.trim(),
-
-      `
-Vertical cinematic TikTok video, portrait 9:16.
-
-SCENE 4 - CLOSING ACTION.
-
-Theme:
-${content.title}
-
-Mood:
-${tone}
-
-Closing message:
-${content.caption}
-
-Visual direction:
-Create a clear ending action.
-For tarot content, show the deck being closed, cards being gathered, a hand writing briefly in a notebook, or the scene being gently cleared.
-Use softer motion and a wider or more peaceful final shot.
-Do not end on another static cup, candle or repeated card close-up.
-The final frame should feel complete and calm.
-
-${visualIdentity}
-      `.trim(),
-    ];
+    );
   }
 
   function updateScene(
@@ -1213,6 +1160,17 @@ ${visualIdentity}
     scenes.length === 4 &&
     finishedSceneCount === 4;
 
+  /*
+   * Aperçu exact des prompts qui seront envoyés à Runway.
+   * Aucun crédit Runway n'est utilisé pour cet aperçu.
+   */
+  const runwayPromptPreview =
+    generated
+      ? buildScenePrompts(
+          generated,
+        )
+      : [];
+
   function continueToTikTok() {
     if (!generated) {
       setVideoError(
@@ -1605,6 +1563,131 @@ ${visualIdentity}
               </div>
             </div>
 
+            {Array.isArray(
+              generated.scenes,
+            ) &&
+              generated.scenes.length >=
+                4 && (
+                <div className="mt-7 rounded-3xl border border-cyan-500/30 bg-cyan-500/5 p-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                        Vérification avant Runway
+                      </p>
+
+                      <h3 className="mt-2 text-xl font-bold text-white">
+                        Contrôle les 4 scènes avant de générer
+                      </h3>
+
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                        Vérifie le texte raconté, le texte affiché et le prompt visuel exact de chaque scène. Aucun crédit Runway n&apos;est utilisé tant que tu ne cliques pas sur le bouton de génération.
+                      </p>
+                    </div>
+
+                    <span className="w-fit rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-300">
+                      0 crédit utilisé
+                    </span>
+                  </div>
+
+                  <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                    {generated.scenes
+                      .slice(0, 4)
+                      .map(
+                        (
+                          scene,
+                          index,
+                        ) => (
+                          <article
+                            key={`${scene.role}-${index}`}
+                            className="rounded-2xl border border-slate-700 bg-slate-950 p-5"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-300">
+                                  Scène{" "}
+                                  {index + 1}
+                                </p>
+
+                                <h4 className="mt-1 text-lg font-semibold text-white">
+                                  {scene.role ||
+                                    getSceneTitle(
+                                      index +
+                                        1,
+                                    )}
+                                </h4>
+                              </div>
+
+                              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                                5 secondes
+                              </span>
+                            </div>
+
+                            <div className="mt-5">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                                Texte raconté
+                              </p>
+
+                              <p className="mt-2 text-sm leading-6 text-slate-200">
+                                {
+                                  scene.voiceText
+                                }
+                              </p>
+                            </div>
+
+                            <div className="mt-5">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                                Texte à l&apos;écran
+                              </p>
+
+                              <p className="mt-2 text-sm leading-6 text-slate-200">
+                                {
+                                  scene.screenText
+                                }
+                              </p>
+                            </div>
+
+                            <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
+                                Direction visuelle IA
+                              </p>
+
+                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">
+                                {
+                                  scene.visualPrompt
+                                }
+                              </p>
+                            </div>
+
+                            <details className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4">
+                              <summary className="cursor-pointer text-sm font-semibold text-slate-300">
+                                Voir le prompt exact envoyé à Runway
+                              </summary>
+
+                              <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">
+                                {
+                                  runwayPromptPreview[
+                                    index
+                                  ] ?? ""
+                                }
+                              </pre>
+                            </details>
+                          </article>
+                        ),
+                      )}
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                    <p className="text-sm font-semibold text-amber-300">
+                      Vérifie avant de lancer
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-slate-400">
+                      Si une scène ne correspond pas au script, utilise « Régénérer le contenu » avant de payer une nouvelle génération Runway.
+                    </p>
+                  </div>
+                </div>
+              )}
+
             <div className="mt-7 rounded-3xl border border-violet-500/30 bg-violet-500/5 p-6">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-violet-300">
                 Étape 3
@@ -1646,7 +1729,7 @@ ${visualIdentity}
                       ? "✓ Les 4 scènes sont terminées"
                       : scenes.length > 0
                         ? "▶ Reprendre les scènes manquantes"
-                        : "🎬 Créer les 4 scènes IA"}
+                        : "✅ Valider et créer les 4 scènes IA"}
                 </button>
 
                 {scenes.length > 0 &&

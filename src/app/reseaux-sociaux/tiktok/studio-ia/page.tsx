@@ -1213,6 +1213,62 @@ ${visualIdentity}
     scenes.length === 4 &&
     finishedSceneCount === 4;
 
+  function continueToTikTok() {
+    if (!generated) {
+      setVideoError(
+        "Aucun contenu TikTok n'est disponible.",
+      );
+
+      return;
+    }
+
+    const savedVideoUrl =
+      window.localStorage.getItem(
+        "klarys-ai-os:tiktok-studio:saved-final-video",
+      );
+
+    if (!savedVideoUrl) {
+      setVideoError(
+        "Sauvegarde d'abord la vidéo finale avant de continuer vers TikTok.",
+      );
+
+      return;
+    }
+
+    const draft = {
+      videoUrl:
+        savedVideoUrl,
+
+      title:
+        generated.title,
+
+      caption:
+        generated.caption,
+
+      hashtags:
+        generated.hashtags,
+
+      hook:
+        generated.hook,
+
+      script:
+        generated.script,
+
+      createdAt:
+        new Date().toISOString(),
+    };
+
+    window.localStorage.setItem(
+      "klarys-ai-os:tiktok:current-draft",
+      JSON.stringify(
+        draft,
+      ),
+    );
+
+    window.location.href =
+      "/reseaux-sociaux/tiktok";
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
@@ -1797,12 +1853,15 @@ ${visualIdentity}
               </button>
 
               {allScenesFinished && (
-                <Link
-                  href="/reseaux-sociaux/tiktok"
+                <button
+                  type="button"
+                  onClick={
+                    continueToTikTok
+                  }
                   className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
                 >
                   Continuer vers TikTok →
-                </Link>
+                </button>
               )}
             </div>
           </section>

@@ -14,19 +14,100 @@ const RUNWAY_API_VERSION =
 
 const SCENE_DURATION = 5;
 
-type RunwayTask = {
-  id?: string;
+function getRunwayErrorMessage(
+  data: unknown,
+) {
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
+    return "";
+  }
 
-  estimatedCost?: {
-    credits?: number;
-  };
+  const record =
+    data as Record<
+      string,
+      unknown
+    >;
 
-  error?: {
-    message?: string;
-  };
+  if (
+    typeof record.message ===
+    "string"
+  ) {
+    return record.message;
+  }
 
-  message?: string;
-};
+  if (
+    typeof record.error ===
+    "string"
+  ) {
+    return record.error;
+  }
+
+  if (
+    record.error &&
+    typeof record.error ===
+      "object"
+  ) {
+    const errorObject =
+      record.error as Record<
+        string,
+        unknown
+      >;
+
+    if (
+      typeof errorObject.message ===
+      "string"
+    ) {
+      return errorObject.message;
+    }
+
+    if (
+      typeof errorObject.detail ===
+      "string"
+    ) {
+      return errorObject.detail;
+    }
+
+    if (
+      typeof errorObject.code ===
+      "string"
+    ) {
+      return errorObject.code;
+    }
+
+    try {
+      return JSON.stringify(
+        errorObject,
+      );
+    } catch {
+      return "";
+    }
+  }
+
+  if (
+    typeof record.detail ===
+    "string"
+  ) {
+    return record.detail;
+  }
+
+  if (
+    typeof record.failure ===
+    "string"
+  ) {
+    return record.failure;
+  }
+
+  if (
+    typeof record.reason ===
+    "string"
+  ) {
+    return record.reason;
+  }
+
+  return "";
+}
 
 export async function POST(
   request: NextRequest,
@@ -51,16 +132,6 @@ export async function POST(
 
     const body =
       await request.json();
-
-    /*
-     * Cette route démarre désormais
-     * UNE SEULE scène Runway.
-     *
-     * Le Studio attendra que cette
-     * scène soit terminée avant
-     * d'appeler cette route pour
-     * la scène suivante.
-     */
 
     const prompt =
       typeof body?.prompt ===
@@ -124,14 +195,72 @@ export async function POST(
         },
       );
 
-    const data =
-      (await response.json()) as RunwayTask;
+    /*
+     * On lit la réponse comme texte
+     * avant de tenter de la convertir
+     * en JSON.
+     *
+     * Cela permet de récupérer aussi
+     * les erreurs Runway qui ne seraient
+     * pas renvoyées au format JSON.
+     */
+    const rawResponse =
+      await response.text();
+
+    let data: unknown =
+      null;
+
+    try {
+      data =
+        rawResponse
+          ? JSON.parse(
+              rawResponse,
+            )
+          : null;
+    } catch {
+      data =
+        rawResponse;
+    }
 
     if (!response.ok) {
-      const runwayMessage =
-        data?.error?.message ??
-        data?.message ??
-        "Runway a refusé la génération vidéo.";
+      let runwayMessage =
+        getRunwayErrorMessage(
+          data,
+        );
+
+      if (
+        !runwayMessage &&
+        typeof data ===
+          "string"
+      ) {
+        runwayMessage =
+          data;
+      }
+
+      if (
+        !runwayMessage
+      ) {
+        runwayMessage =
+          response.statusText ||
+          "Erreur Runway inconnue.";
+      }
+
+      const fullMessage =
+        `Runway HTTP ${response.status} — ${runwayMessage}`;
+
+      console.error(
+        "RUNWAY VIDEO ERROR",
+        {
+          status:
+            response.status,
+
+          statusText:
+            response.statusText,
+
+          response:
+            data,
+        },
+      );
 
       return NextResponse.json(
         {
@@ -141,7 +270,7 @@ export async function POST(
             response.status,
 
           error:
-            runwayMessage,
+            fullMessage,
 
           runway:
             data,
@@ -153,8 +282,38 @@ export async function POST(
       );
     }
 
+    if (
+      !data ||
+      typeof data !==
+        "object"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+
+          error:
+            "Réponse Runway invalide.",
+
+          runway:
+            data,
+        },
+        {
+          status: 502,
+        },
+      );
+    }
+
+    const runwayData =
+      data as Record<
+        string,
+        unknown
+      >;
+
     const taskId =
-      data?.id;
+      typeof runwayData.id ===
+      "string"
+        ? runwayData.id
+        : "";
 
     if (!taskId) {
       return NextResponse.json(
@@ -182,7 +341,8 @@ export async function POST(
         SCENE_DURATION,
 
       estimatedCost:
-        data?.estimatedCost ??
+        runwayData
+          .estimatedCost ??
         null,
     });
   } catch (error) {
@@ -190,6 +350,11 @@ export async function POST(
       error instanceof Error
         ? error.message
         : "Erreur inconnue.";
+
+    console.error(
+      "RUNWAY ROUTE ERROR",
+      error,
+    );
 
     return NextResponse.json(
       {

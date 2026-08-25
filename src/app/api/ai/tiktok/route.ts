@@ -9,6 +9,13 @@ export const dynamic =
 const OPENAI_RESPONSES_URL =
   "https://api.openai.com/v1/responses";
 
+type GeneratedScene = {
+  role: string;
+  voiceText: string;
+  screenText: string;
+  visualPrompt: string;
+};
+
 type GeneratedContent = {
   title: string;
   hook: string;
@@ -17,6 +24,7 @@ type GeneratedContent = {
   caption: string;
   hashtags: string[];
   visualIdea: string;
+  scenes: GeneratedScene[];
   duration: string;
 };
 
@@ -173,6 +181,41 @@ function normalizeContent(
       ),
     ).slice(0, 8);
 
+  const rawScenes =
+    Array.isArray(
+      record.scenes,
+    )
+      ? record.scenes
+      : [];
+
+  const scenes: GeneratedScene[] =
+    rawScenes
+      .filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) &&
+          typeof item === "object" &&
+          !Array.isArray(item),
+      )
+      .map((item, index) => ({
+        role:
+          typeof item.role === "string"
+            ? item.role.trim()
+            : ["Accroche", "Développement", "Message central", "Conclusion"][index] ?? `Scène ${index + 1}`,
+        voiceText:
+          typeof item.voiceText === "string"
+            ? item.voiceText.trim()
+            : "",
+        screenText:
+          typeof item.screenText === "string"
+            ? item.screenText.trim()
+            : "",
+        visualPrompt:
+          typeof item.visualPrompt === "string"
+            ? item.visualPrompt.trim()
+            : "",
+      }))
+      .slice(0, 4);
+
   return {
     title:
       typeof record.title ===
@@ -207,6 +250,8 @@ function normalizeContent(
       "string"
         ? record.visualIdea.trim()
         : "",
+
+    scenes,
 
     duration:
       typeof record.duration ===
@@ -435,16 +480,50 @@ Ne mets aucun hashtag dans "caption".
 
 Tous les hashtags doivent être placés exclusivement dans le tableau "hashtags".
 
-VISUEL :
+VISUEL — PRIORITÉ ÉLEVÉE :
 
-Le champ visualIdea doit décrire un univers cinématographique concret qui pourra ensuite être découpé en quatre scènes Runway différentes.
+Tu dois concevoir 4 scènes qui RACONTENT réellement le script, et non 4 variations décoratives du même thème.
+
+Chaque scène correspond à environ 5 secondes et doit avoir :
+- son propre morceau de voix dans voiceText ;
+- son texte écran court ;
+- une action visuelle concrète et différente ;
+- un visualPrompt autonome, directement exploitable par un générateur vidéo.
+
+RÈGLES NARRATIVES :
+- scène 1 = accroche visuelle immédiate ;
+- scène 2 = développement concret de l'idée ;
+- scène 3 = message central, révélation ou point fort ;
+- scène 4 = conclusion visuelle et passage à l'action ou fermeture naturelle ;
+- les 4 voiceText, lus à la suite, doivent raconter le même message que le script global ;
+- chaque scène doit illustrer le SENS de son voiceText, pas seulement la catégorie du contenu.
+
+RÈGLES ANTI-RÉPÉTITION :
+- ne montre pas quatre fois des mains manipulant des cartes ;
+- ne montre pas quatre fois une carte sur une table ;
+- bougies, cristaux, fumée, tasse, pendule et accessoires mystiques ne doivent jamais être ajoutés automatiquement ;
+- pour un contenu tarot, la carte peut apparaître lorsqu'elle apporte une information narrative, mais les autres scènes doivent aussi traduire le message dans des actions, situations ou symboles concrets ;
+- varie les actions et les cadrages tout en conservant une continuité esthétique ;
+- si une personne apparaît dans plusieurs scènes, conserve la même apparence générale et la même tenue ;
+- esthétique réaliste, élégante, lumineuse et cinématographique ;
+- format vertical 9:16 ;
+- aucun logo, sous-titre, texte lisible ou watermark dans l'image générée.
+
+Le champ visualIdea décrit uniquement la direction artistique commune aux 4 scènes.
+Le tableau scenes contient les instructions narratives précises.
+
+IMPORTANT POUR visualPrompt :
+- écris chaque visualPrompt en anglais pour optimiser l'interprétation du générateur vidéo ;
+- décris le sujet, l'action, le décor, le cadrage, le mouvement de caméra et l'ambiance ;
+- n'inclus aucun texte à afficher dans l'image ;
+- ne recopie pas simplement le script dans le prompt visuel.
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement cette structure :
 
 {
   "title": "Titre court",
   "hook": "Accroche",
-  "script": "Script voix d'environ 20 secondes",
+  "script": "Script voix complet d'environ 20 secondes",
   "screenText": [
     "Texte scène 1",
     "Texte scène 2",
@@ -460,7 +539,33 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
     "#hashtag5",
     "#hashtag6"
   ],
-  "visualIdea": "Description visuelle détaillée",
+  "visualIdea": "Direction artistique commune, concise et concrète",
+  "scenes": [
+    {
+      "role": "Accroche",
+      "voiceText": "Première partie du script",
+      "screenText": "Texte écran scène 1",
+      "visualPrompt": "English cinematic prompt for scene 1"
+    },
+    {
+      "role": "Développement",
+      "voiceText": "Deuxième partie du script",
+      "screenText": "Texte écran scène 2",
+      "visualPrompt": "English cinematic prompt for scene 2"
+    },
+    {
+      "role": "Message central",
+      "voiceText": "Troisième partie du script",
+      "screenText": "Texte écran scène 3",
+      "visualPrompt": "English cinematic prompt for scene 3"
+    },
+    {
+      "role": "Conclusion",
+      "voiceText": "Dernière partie du script",
+      "screenText": "Texte écran scène 4",
+      "visualPrompt": "English cinematic prompt for scene 4"
+    }
+  ],
   "duration": "20 secondes"
 }
     `.trim();
@@ -498,7 +603,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
                 "auto",
 
               max_output_tokens:
-                2200,
+                3200,
             }),
 
           cache:
@@ -593,7 +698,14 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
       !content.script ||
       !content.caption ||
       content.screenText.length <
-        4
+        4 ||
+      content.scenes.length < 4 ||
+      content.scenes.some(
+        (scene) =>
+          !scene.voiceText ||
+          !scene.screenText ||
+          !scene.visualPrompt,
+      )
     ) {
       return NextResponse.json(
         {

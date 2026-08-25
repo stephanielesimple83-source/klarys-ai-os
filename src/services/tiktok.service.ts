@@ -85,6 +85,45 @@ export interface TikTokUserInfo {
   display_name?: string;
 }
 
+type TikTokOAuthErrorResponse = {
+  error?:
+    | string
+    | {
+        code?: string;
+        message?: string;
+        log_id?: string;
+      };
+
+  error_description?: string;
+  log_id?: string;
+};
+
+function getOAuthErrorMessage(
+  data: TikTokOAuthErrorResponse,
+) {
+  const errorCode =
+    typeof data?.error === "string"
+      ? data.error
+      : data?.error?.code ??
+        "unknown";
+
+  const errorDescription =
+    data?.error_description ??
+    (typeof data?.error === "object"
+      ? data.error?.message
+      : null) ??
+    "No description";
+
+  const logId =
+    data?.log_id ??
+    (typeof data?.error === "object"
+      ? data.error?.log_id
+      : null) ??
+    "none";
+
+  return `TikTok OAuth error: ${errorCode} - ${errorDescription} - log_id: ${logId}`;
+}
+
 export async function exchangeTikTokCode(
   code: string,
 ): Promise<TikTokTokenResponse> {
@@ -127,22 +166,18 @@ export async function exchangeTikTokCode(
     );
 
   const data =
-    await response.json();
+    (await response.json()) as
+      TikTokTokenResponse &
+      TikTokOAuthErrorResponse;
 
   console.log(
-    "TIKTOK RAW RESPONSE DEBUG",
+    "TIKTOK TOKEN EXCHANGE DEBUG",
     {
       httpStatus:
         response.status,
 
       responseOk:
         response.ok,
-
-      rootKeys:
-        data &&
-        typeof data === "object"
-          ? Object.keys(data)
-          : [],
 
       hasAccessToken:
         Boolean(
@@ -159,52 +194,142 @@ export async function exchangeTikTokCode(
           data?.open_id,
         ),
 
-      error:
-        data?.error ?? null,
-
-      errorDescription:
-        data?.error_description ??
+      expiresIn:
+        data?.expires_in ??
         null,
 
-      logId:
-        data?.log_id ?? null,
+      refreshExpiresIn:
+        data?.refresh_expires_in ??
+        null,
+
+      scope:
+        data?.scope ??
+        null,
     },
   );
 
-  /*
-   * IMPORTANT :
-   *
-   * TikTok peut retourner un JSON
-   * contenant "error" même si la
-   * réponse HTTP ne suffit pas à
-   * détecter correctement l'échec.
-   */
   if (
     !response.ok ||
     data?.error ||
     !data?.access_token
   ) {
-    const errorCode =
-      typeof data?.error === "string"
-        ? data.error
-        : data?.error?.code ??
-          "unknown";
-
-    const errorDescription =
-      data?.error_description ??
-      data?.error?.message ??
-      "No description";
-
-    const logId =
-      data?.log_id ??
-      "none";
-
     throw new Error(
-      `TikTok OAuth error: ${errorCode} - ${errorDescription} - log_id: ${logId}`,
+      getOAuthErrorMessage(
+        data,
+      ),
     );
   }
 
-  return data as TikTokTokenResponse;
+  return data;
+}
+
+export async function refreshTikTokAccessToken(
+  refreshToken: string,
+): Promise<TikTokTokenResponse> {
+  if (!refreshToken) {
+    throw new Error(
+      "Le refresh token TikTok est absent.",
+    );
+  }
+
+  const body =
+    new URLSearchParams({
+      client_key:
+        getTikTokClientKey(),
+
+      client_secret:
+        getTikTokClientSecret(),
+
+      grant_type:
+        "refresh_token",
+
+      refresh_token:
+        refreshToken,
+    });
+
+  const response =
+    await fetch(
+      TIKTOK_TOKEN_URL,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/x-www-form-urlencoded",
+
+          "Cache-Control":
+            "no-cache",
+        },
+
+        body,
+
+        cache:
+          "no-store",
+      },
+    );
+
+  const data =
+    (await response.json()) as
+      TikTokTokenResponse &
+      TikTokOAuthErrorResponse;
+
+  console.log(
+    "TIKTOK TOKEN REFRESH DEBUG",
+    {
+      httpStatus:
+        response.status,
+
+      responseOk:
+        response.ok,
+
+      hasAccessToken:
+        Boolean(
+          data?.access_token,
+        ),
+
+      hasRefreshToken:
+        Boolean(
+          data?.refresh_token,
+        ),
+
+      hasOpenId:
+        Boolean(
+          data?.open_id,
+        ),
+
+      expiresIn:
+        data?.expires_in ??
+        null,
+
+      refreshExpiresIn:
+        data?.refresh_expires_in ??
+        null,
+
+      scope:
+        data?.scope ??
+        null,
+    },
+  );
+
+  if (
+    !response.ok ||
+    data?.error ||
+    !data?.access_token
+  ) {
+    throw new Error(
+      getOAuthErrorMessage(
+        data,
+      ),
+    );
+  }
+
+  /*
+   * TikTok peut faire tourner
+   * le refresh_token.
+   * Le nouveau token retourné
+   * doit donc remplacer l'ancien.
+   */
+  return data;
 }
 
 export async function getTikTokUserInfo(
@@ -238,7 +363,11 @@ export async function getTikTokUserInfo(
   const data =
     await response.json();
 
-  if (!response.ok) {
+  if (
+    !response.ok ||
+    data?.error?.code !==
+      "ok"
+  ) {
     throw new Error(
       data?.error?.message ??
         data?.error_description ??

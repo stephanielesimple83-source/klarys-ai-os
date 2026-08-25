@@ -275,6 +275,20 @@ export async function POST(
     const prompt = `
 Tu es le responsable éditorial TikTok de Klarys AI OS.
 
+Tu es spécialisé dans :
+- TikTok France ;
+- création de contenu court ;
+- SEO TikTok ;
+- recherche TikTok ;
+- choix de hashtags ;
+- voyance ;
+- tarot ;
+- spiritualité ;
+- développement personnel ;
+- lithothérapie ;
+- bien-être ;
+- commerce en ligne.
+
 Tu dois créer un contenu TikTok français court, naturel, crédible et optimisé pour la rétention.
 
 TYPE DE CONTENU :
@@ -293,31 +307,136 @@ RÈGLES DE CONTENU :
 - français naturel et fluide ;
 - accroche forte dès la première seconde ;
 - pas de promesse mensongère ;
-- pas de santé, grossesse ou contenu destiné aux mineurs ;
+- pas de santé ;
+- pas de grossesse ;
+- pas de contenu destiné aux mineurs ;
 - pas de formulation anxiogène ;
 - éviter les clichés excessivement mystiques ;
 - le script voix doit pouvoir être lu en environ 20 secondes ;
 - la légende doit compléter la vidéo sans recopier mot pour mot le script ;
 - les textes écran doivent être courts et lisibles.
 
-HASHTAGS — TRÈS IMPORTANT :
-Tu dois sélectionner les hashtags les plus pertinents pour CE sujet précis.
-Utilise la recherche web si elle aide à identifier les usages actuels et pertinents.
-Choisis 6 à 8 hashtags maximum.
-Mélange intelligemment :
-1. 2 à 3 hashtags très ciblés sur le sujet exact ;
-2. 2 à 3 hashtags de niche réellement utilisés par l'audience concernée ;
-3. 1 à 2 hashtags plus larges mais toujours directement pertinents.
+HASHTAGS — PRIORITÉ ÉLEVÉE :
 
-Interdictions :
-- ne mets PAS automatiquement #fyp, #foryou, #viral ou #tiktok ;
-- ne mets PAS #klarys sauf si la marque est réellement le sujet de la vidéo ;
-- ne mets PAS #bienetre si le contenu ne concerne pas directement le bien-être ;
+Les hashtags ne doivent JAMAIS être choisis comme une simple liste générique.
+
+Avant de produire la réponse finale, analyse précisément :
+1. le type de contenu ;
+2. le sujet exact de la vidéo ;
+3. l'intention probable de la personne qui regarde ou recherche ce contenu ;
+4. le vocabulaire réellement utilisé autour de ce sujet ;
+5. les recherches et tendances actuelles disponibles sur le web lorsqu'elles sont pertinentes.
+
+Utilise la recherche web lorsque cela permet d'améliorer la sélection.
+
+Tu dois sélectionner entre 6 et 8 hashtags.
+
+Construis la sélection de cette manière :
+
+CATÉGORIE A — SUJET EXACT
+Choisis 2 ou 3 hashtags directement liés au sujet précis de cette vidéo.
+
+CATÉGORIE B — NICHE
+Choisis 2 ou 3 hashtags correspondant à l'audience réellement intéressée par ce type de contenu.
+
+CATÉGORIE C — DÉCOUVERTE
+Choisis 1 ou 2 hashtags légèrement plus larges, mais toujours cohérents avec le sujet.
+
+Les hashtags doivent aider TikTok à comprendre :
+- de quoi parle la vidéo ;
+- à quelle audience la montrer ;
+- pour quelles recherches elle peut être pertinente.
+
+IMPORTANT :
+La pertinence est plus importante que la taille du hashtag.
+
+Un hashtag très ciblé est préférable à un énorme hashtag générique sans rapport précis avec la vidéo.
+
+ADAPTATION AUTOMATIQUE :
+
+Si le contenu concerne le tarot :
+privilégie les hashtags réellement liés au tarot, au tirage et au thème précis du tirage.
+
+Si le contenu concerne la voyance :
+privilégie les hashtags correspondant à la voyance et au sujet traité.
+
+Si le contenu concerne un tirage du jour :
+utilise des hashtags liés au tirage du jour, mais adapte aussi plusieurs hashtags à la carte, au message ou au thème précis.
+
+Si le contenu concerne la spiritualité :
+ne mets pas automatiquement des hashtags tarot ou voyance si le contenu n'en parle pas.
+
+Si le contenu concerne la lithothérapie :
+utilise des hashtags liés aux pierres et surtout à la pierre ou au produit réellement présenté.
+
+Si le contenu concerne un produit ou la boutique :
+utilise des hashtags correspondant au produit, à son usage et à l'intention d'achat.
+
+VARIATION :
+
+Ne génère pas systématiquement la même combinaison de hashtags d'une vidéo à l'autre.
+
+Les hashtags doivent évoluer selon :
+- le sujet ;
+- l'angle ;
+- le message ;
+- la carte de tarot éventuelle ;
+- le produit éventuel ;
+- l'intention de la vidéo.
+
+INTERDICTIONS :
+
 - aucun hashtag hors sujet ;
 - aucun doublon ;
-- privilégie la pertinence et l'intention de recherche plutôt que le volume brut.
+- pas de remplissage ;
+- pas de liste générique identique sur toutes les vidéos ;
+- pas automatiquement #fyp ;
+- pas automatiquement #foryou ;
+- pas automatiquement #pourtoi ;
+- pas automatiquement #viral ;
+- pas automatiquement #tiktok ;
+- pas automatiquement #france ;
+- pas #klarys sauf si la marque Klarys est réellement le sujet ;
+- pas #bienetre si le contenu ne concerne pas directement le bien-être ;
+- pas #energie si le mot est utilisé uniquement comme terme générique ;
+- pas #developpementpersonnel si le sujet n'est pas réellement lié au développement personnel.
+
+Ne choisis jamais un hashtag uniquement parce qu'il semble populaire.
+
+Choisis-le parce qu'il correspond au contenu et à l'audience recherchée.
+
+EXEMPLE DE LOGIQUE :
+
+Pour une vidéo "Tirage du jour — Le Bateleur", ne te contente pas de :
+
+#tiragedujour
+#tarot
+#intuitif
+#developpementpersonnel
+#bienetre
+#energie
+
+Analyse plutôt :
+- le tirage du jour ;
+- le tarot ;
+- la carte du Bateleur ;
+- sa notion de commencement ;
+- la confiance ;
+- le passage à l'action ;
+- l'audience intéressée par les tirages tarot.
+
+La combinaison finale doit être spécifique à CETTE vidéo.
+
+LÉGENDE :
+
+Le champ "caption" contient uniquement la légende.
+
+Ne mets aucun hashtag dans "caption".
+
+Tous les hashtags doivent être placés exclusivement dans le tableau "hashtags".
 
 VISUEL :
+
 Le champ visualIdea doit décrire un univers cinématographique concret qui pourra ensuite être découpé en quatre scènes Runway différentes.
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement cette structure :
@@ -332,7 +451,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
     "Texte scène 3",
     "Texte scène 4"
   ],
-  "caption": "Légende TikTok naturelle",
+  "caption": "Légende TikTok naturelle sans hashtag",
   "hashtags": [
     "#hashtag1",
     "#hashtag2",
@@ -379,7 +498,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
                 "auto",
 
               max_output_tokens:
-                1800,
+                2200,
             }),
 
           cache:
@@ -482,6 +601,23 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement ce
 
           error:
             "Le contenu généré est incomplet. Réessaie la génération.",
+        },
+        {
+          status: 502,
+        },
+      );
+    }
+
+    if (
+      content.hashtags.length <
+      6
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+
+          error:
+            "L'IA n'a pas généré suffisamment de hashtags pertinents. Réessaie la génération.",
         },
         {
           status: 502,

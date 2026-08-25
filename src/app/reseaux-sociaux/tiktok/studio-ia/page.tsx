@@ -315,10 +315,30 @@ export default function TikTokAIStudioPage() {
               async (
                 scene,
               ) => {
+                /*
+                 * Une scène sans taskId ne
+                 * doit jamais rester bloquée
+                 * sur INITIALIZING, PENDING
+                 * ou RUNNING après un refresh.
+                 */
                 if (
                   !scene.taskId
                 ) {
-                  return scene;
+                  return {
+                    ...scene,
+
+                    status:
+                      scene.status ===
+                      "SUCCEEDED"
+                        ? "SUCCEEDED"
+                        : "WAITING",
+
+                    videoUrl:
+                      scene.status ===
+                      "SUCCEEDED"
+                        ? scene.videoUrl
+                        : "",
+                  };
                 }
 
                 try {
@@ -339,12 +359,6 @@ export default function TikTokAIStudioPage() {
                       scene.videoUrl,
                   };
                 } catch {
-                  /*
-                   * Si Runway ne répond
-                   * momentanément pas,
-                   * on conserve les données
-                   * sauvegardées localement.
-                   */
                   return scene;
                 }
               },
@@ -876,6 +890,20 @@ ${visualIdentity}
       if (
         !isThrottle
       ) {
+        updateScene(
+          sceneNumber,
+          {
+            taskId:
+              "",
+
+            status:
+              "WAITING",
+
+            videoUrl:
+              "",
+          },
+        );
+
         throw new Error(
           lastError,
         );
@@ -893,6 +921,20 @@ ${visualIdentity}
         10000,
       );
     }
+
+    updateScene(
+      sceneNumber,
+      {
+        taskId:
+          "",
+
+        status:
+          "WAITING",
+
+        videoUrl:
+          "",
+      },
+    );
 
     throw new Error(
       lastError ||

@@ -328,10 +328,14 @@ export default function TikTokDraftAutofill() {
       );
 
       const caption =
-        [
-          draft.caption,
-          ...draft.hashtags,
-        ]
+        draft.caption.trim();
+
+      const hashtags =
+        draft.hashtags
+          .map(
+            (tag) =>
+              tag.trim(),
+          )
           .filter(Boolean)
           .join(" ");
 
@@ -350,8 +354,22 @@ export default function TikTokDraftAutofill() {
         );
       }
 
+      const hashtagsInput =
+        document.querySelector(
+          '#hashtags',
+        ) as HTMLInputElement | null;
+
+      if (
+        hashtagsInput
+      ) {
+        setNativeValue(
+          hashtagsInput,
+          hashtags,
+        );
+      }
+
       setMessage(
-        "✓ Vidéo, légende et hashtags chargés automatiquement.",
+        "✓ Vidéo, légende et hashtags optimisés chargés automatiquement.",
       );
     } catch (error) {
       setMessage(

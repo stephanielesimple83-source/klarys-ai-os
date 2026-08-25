@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 
+import TikTokDraftAutofill from "@/components/tiktok/TikTokDraftAutofill";
 import TikTokUploadPanel from "@/components/tiktok/TikTokUploadPanel";
 
 import {
@@ -20,16 +21,19 @@ export const dynamic = "force-dynamic";
 export default async function TikTokPage({
   searchParams,
 }: TikTokPageProps) {
-  const params = await searchParams;
+  const params =
+    await searchParams;
 
-  const cookieStore = await cookies();
+  const cookieStore =
+    await cookies();
 
   const accessToken =
     cookieStore.get(
       "tiktok_access_token",
     )?.value;
 
-  let user: TikTokUserInfo | null =
+  let user:
+    TikTokUserInfo | null =
     null;
 
   let profileError:
@@ -94,8 +98,12 @@ export default async function TikTokPage({
               {connected &&
               avatarUrl ? (
                 <img
-                  src={avatarUrl}
-                  alt={displayName}
+                  src={
+                    avatarUrl
+                  }
+                  alt={
+                    displayName
+                  }
                   className="h-16 w-16 rounded-full border border-slate-700 object-cover"
                 />
               ) : (
@@ -158,7 +166,9 @@ export default async function TikTokPage({
                 <p className="mt-2 text-sm text-slate-400">
                   Compte :{" "}
                   <strong className="text-white">
-                    {user.display_name}
+                    {
+                      user.display_name
+                    }
                   </strong>
                 </p>
               )}
@@ -257,7 +267,10 @@ export default async function TikTokPage({
         </section>
 
         {connected && (
-          <TikTokUploadPanel />
+          <>
+            <TikTokDraftAutofill />
+            <TikTokUploadPanel />
+          </>
         )}
       </div>
     </main>

@@ -482,32 +482,103 @@ Tous les hashtags doivent être placés exclusivement dans le tableau "hashtags"
 
 VISUEL — PRIORITÉ ÉLEVÉE :
 
-Tu dois concevoir 4 scènes qui RACONTENT réellement le script, et non 4 variations décoratives du même thème.
+Tu dois concevoir 4 scènes qui RACONTENT réellement le script ET qui restent immédiatement reconnaissables comme appartenant au TYPE DE CONTENU choisi.
+
+Avant d'écrire les visualPrompt, identifie d'abord la famille visuelle à partir de TYPE DE CONTENU et du SUJET.
+La famille visuelle doit rester cohérente sur les 4 scènes.
 
 Chaque scène correspond à environ 5 secondes et doit avoir :
 - son propre morceau de voix dans voiceText ;
 - son texte écran court ;
 - une action visuelle concrète et différente ;
-- un visualPrompt autonome, directement exploitable par un générateur vidéo.
+- un visualPrompt autonome, directement exploitable par un générateur vidéo ;
+- un lien visuel clair avec le type de contenu et le sujet.
 
 RÈGLES NARRATIVES :
-- scène 1 = accroche visuelle immédiate ;
+- scène 1 = accroche visuelle immédiate et identification claire du sujet ;
 - scène 2 = développement concret de l'idée ;
 - scène 3 = message central, révélation ou point fort ;
-- scène 4 = conclusion visuelle et passage à l'action ou fermeture naturelle ;
+- scène 4 = conclusion visuelle et fermeture naturelle ;
 - les 4 voiceText, lus à la suite, doivent raconter le même message que le script global ;
-- chaque scène doit illustrer le SENS de son voiceText, pas seulement la catégorie du contenu.
+- chaque scène doit illustrer le SENS de son voiceText sans perdre l'identité visuelle du type de contenu.
+
+ADAPTATION VISUELLE OBLIGATOIRE SELON LE TYPE :
+
+1. SI TYPE DE CONTENU = "Tirage du jour"
+- le spectateur doit comprendre dès la scène 1 qu'il regarde un vrai tirage de tarot ;
+- si le sujet cite une carte précise, cette carte doit être le fil conducteur visuel de la vidéo ;
+- scène 1 : action de tirage, révélation ou sélection de la carte concernée ;
+- scène 2 : montrer clairement la carte ou un détail symbolique réellement lié à cette carte, avec un cadrage différent ;
+- scène 3 : traduire le sens de la carte par une action ou une situation concrète MAIS conserver un lien visuel clair avec le tirage, par exemple la carte encore présente dans le décor, posée au premier ou second plan ;
+- scène 4 : revenir naturellement au tirage pour conclure, par exemple carte replacée devant la personne, main qui rassemble le jeu, carte mise en valeur dans le plan final ;
+- ne transforme jamais un tirage du jour en vidéo lifestyle générique de carnet, ordinateur, bureau ou développement personnel ;
+- n'écris jamais "no tarot card visible" si le sujet est un tirage de tarot ;
+- évite les cartes inventées ou fantaisistes si une carte précise est demandée : décrire son iconographie de façon sobre et cohérente sans imposer de texte lisible sur la carte ;
+- si le sujet précise Tarot de Marseille, Rider-Waite ou un autre système, respecte ce système ;
+- sinon, reste générique et n'affirme pas un système précis.
+
+2. SI TYPE DE CONTENU = "Message du jour"
+- l'univers peut être lifestyle, symbolique ou contemplatif ;
+- aucune carte de tarot n'est nécessaire sauf si le sujet en parle explicitement ;
+- privilégie des situations humaines simples, lumineuses et modernes qui traduisent le message.
+
+3. SI TYPE DE CONTENU = "Voyance"
+- l'univers doit être identifiable comme consultation ou pratique de voyance sans caricature ;
+- cartes, oracle ou outils divinatoires peuvent être présents seulement s'ils correspondent au sujet ;
+- conserver une esthétique professionnelle, chaleureuse et crédible ;
+- ne pas transformer la scène en décor occulte sombre ou excessivement mystique.
+
+4. SI TYPE DE CONTENU = "Psycho-énergétique"
+- privilégie des scènes de détente, respiration, écoute, environnement calme, mouvement doux ou pratique énergétique sobre ;
+- pas de tarot, oracle ou accessoires de voyance sauf si le sujet le demande explicitement ;
+- esthétique lumineuse, rassurante et professionnelle.
+
+5. SI TYPE DE CONTENU = "Présentation d'une séance"
+- montrer concrètement le déroulement, l'accueil, la préparation, l'installation ou l'ambiance d'une séance ;
+- donner une impression professionnelle, simple et rassurante ;
+- les quatre scènes doivent suivre une progression logique comme un mini parcours client.
+
+6. SI TYPE DE CONTENU = "Présentation Klarys"
+- montrer une identité professionnelle cohérente et moderne ;
+- faire apparaître des éléments pertinents de l'activité selon le sujet sans mélanger inutilement toutes les activités dans chaque scène ;
+- privilégier une narration humaine et crédible.
+
+7. SI LE SUJET CONCERNE LA LITHOTHÉRAPIE
+- la pierre, le bracelet ou le bijou concerné doit rester le sujet principal ;
+- montrer matière, couleur, porté, manipulation ou usage ;
+- ne jamais remplacer le produit par une scène lifestyle générique.
+
+8. SI LE SUJET CONCERNE UN PRODUIT OU LA BOUTIQUE
+- le produit réel ou sa catégorie doit rester clairement identifiable dans chaque scène pertinente ;
+- montrer successivement découverte, détail, utilisation ou bénéfice visuel, puis conclusion ;
+- ne pas inventer d'autres produits qui détournent l'attention.
+
+RÈGLES DE CONTINUITÉ :
+- les 4 scènes doivent sembler appartenir à la même vidéo ;
+- même personne, même apparence générale et même tenue si une personne récurrente apparaît ;
+- décor cohérent ou transition logique entre décors ;
+- palette lumineuse et style cinématographique cohérents ;
+- conserver l'objet principal ou le sujet comme fil rouge lorsqu'il est essentiel à la compréhension ;
+- chaque scène doit cependant avoir une action et un cadrage différents.
 
 RÈGLES ANTI-RÉPÉTITION :
-- ne montre pas quatre fois des mains manipulant des cartes ;
-- ne montre pas quatre fois une carte sur une table ;
+- ne montre pas quatre fois exactement les mêmes mains et le même cadrage ;
+- ne montre pas quatre fois une carte statique sur une table ;
+- ne montre pas quatre fois un gros plan identique ;
+- varie plans serrés, plans moyens, angles et mouvements de caméra ;
 - bougies, cristaux, fumée, tasse, pendule et accessoires mystiques ne doivent jamais être ajoutés automatiquement ;
-- pour un contenu tarot, la carte peut apparaître lorsqu'elle apporte une information narrative, mais les autres scènes doivent aussi traduire le message dans des actions, situations ou symboles concrets ;
-- varie les actions et les cadrages tout en conservant une continuité esthétique ;
-- si une personne apparaît dans plusieurs scènes, conserve la même apparence générale et la même tenue ;
+- les accessoires doivent servir le sujet, jamais simplement décorer ;
+- évite les scènes génériques qui pourraient convenir à n'importe quel thème ;
 - esthétique réaliste, élégante, lumineuse et cinématographique ;
 - format vertical 9:16 ;
 - aucun logo, sous-titre, texte lisible ou watermark dans l'image générée.
+
+COHÉRENCE SUJET / PROMPT :
+- chaque visualPrompt doit être compatible avec le type et le sujet ;
+- n'ajoute jamais une interdiction qui contredit le sujet, par exemple "no tarot card visible" pour un tirage du jour sur une carte précise ;
+- n'ajoute jamais de carnet, laptop, café ou bureau uniquement pour représenter abstraitement "passer à l'action" si cela fait perdre l'identité du contenu ;
+- pour traduire une idée abstraite, trouve d'abord une action compatible avec l'univers visuel du contenu ;
+- si le sujet contient un objet central précis, conserve cet objet comme ancrage narratif.
 
 Le champ visualIdea décrit uniquement la direction artistique commune aux 4 scènes.
 Le tableau scenes contient les instructions narratives précises.
@@ -515,8 +586,12 @@ Le tableau scenes contient les instructions narratives précises.
 IMPORTANT POUR visualPrompt :
 - écris chaque visualPrompt en anglais pour optimiser l'interprétation du générateur vidéo ;
 - décris le sujet, l'action, le décor, le cadrage, le mouvement de caméra et l'ambiance ;
+- indique explicitement la continuité utile avec la scène précédente quand nécessaire ;
+- indique clairement l'objet principal qui doit rester visible lorsqu'il est essentiel au sujet ;
 - n'inclus aucun texte à afficher dans l'image ;
-- ne recopie pas simplement le script dans le prompt visuel.
+- ne recopie pas simplement le script dans le prompt visuel ;
+- évite les formulations contradictoires ;
+- écris des prompts concrets et filmables en environ 5 secondes.
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement cette structure :
 

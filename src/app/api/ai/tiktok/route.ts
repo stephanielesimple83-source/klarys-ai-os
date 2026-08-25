@@ -9,16 +9,7 @@ export const dynamic =
 const OPENAI_RESPONSES_URL =
   "https://api.openai.com/v1/responses";
 
-const ALLOWED_CONTENT_TYPES = [
-  "Tirage du jour",
-  "Message du jour",
-  "Voyance",
-  "Psycho-énergétique",
-  "Présentation d'une séance",
-  "Présentation Klarys",
-];
-
-type GeneratedTikTokContent = {
+type GeneratedContent = {
   title: string;
   hook: string;
   script: string;
@@ -29,34 +20,39 @@ type GeneratedTikTokContent = {
   duration: string;
 };
 
-function extractOutputText(
-  data: unknown,
-) {
-  const response =
-    data as {
-      output?: Array<{
-        type?: string;
-        content?: Array<{
-          type?: string;
-          text?: string;
-        }>;
-      }>;
-    };
+type OpenAIResponse = {
+  output?: Array<{
+    type?: string;
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+  }>;
 
+  error?: {
+    message?: string;
+    code?: string;
+  };
+};
+
+function extractOutputText(
+  data: OpenAIResponse,
+) {
   const texts: string[] = [];
 
   for (
     const item of
-      response.output ?? []
+    data.output ?? []
   ) {
     for (
       const content of
-        item.content ?? []
+      item.content ?? []
     ) {
       if (
         content.type ===
           "output_text" &&
-        content.text
+        typeof content.text ===
+          "string"
       ) {
         texts.push(
           content.text,
@@ -65,32 +61,159 @@ function extractOutputText(
     }
   }
 
-  return texts.join("\n").trim();
+  return texts
+    .join("\n")
+    .trim();
 }
 
-function parseJsonResponse(
-  text: string,
-): GeneratedTikTokContent {
+function cleanJsonText(
+  value: string,
+) {
+  return value
+    .replace(
+      /^```json\s*/i,
+      "",
+    )
+    .replace(
+      /^```\s*/i,
+      "",
+    )
+    .replace(
+      /\s*```$/,
+      "",
+    )
+    .trim();
+}
+
+function normalizeHashtag(
+  value: string,
+) {
   const cleaned =
-    text
+    value
       .trim()
       .replace(
-        /^```json\s*/i,
+        /\s+/g,
         "",
       )
       .replace(
-        /^```\s*/i,
+        /^#+/,
         "",
       )
       .replace(
-        /\s*```$/,
+        /[^\p{L}\p{N}_]/gu,
         "",
-      )
-      .trim();
+      );
 
-  return JSON.parse(
-    cleaned,
-  ) as GeneratedTikTokContent;
+  return cleaned
+    ? `#${cleaned}`
+    : "";
+}
+
+function normalizeContent(
+  value: unknown,
+): GeneratedContent {
+  if (
+    !value ||
+    typeof value !==
+      "object"
+  ) {
+    throw new Error(
+      "Le contenu IA retourné est invalide.",
+    );
+  }
+
+  const record =
+    value as Record<
+      string,
+      unknown
+    >;
+
+  const screenText =
+    Array.isArray(
+      record.screenText,
+    )
+      ? record.screenText
+          .filter(
+            (
+              item,
+            ): item is string =>
+              typeof item ===
+              "string",
+          )
+          .map(
+            (item) =>
+              item.trim(),
+          )
+          .filter(Boolean)
+          .slice(0, 4)
+      : [];
+
+  const rawHashtags =
+    Array.isArray(
+      record.hashtags,
+    )
+      ? record.hashtags
+          .filter(
+            (
+              item,
+            ): item is string =>
+              typeof item ===
+              "string",
+          )
+      : [];
+
+  const hashtags =
+    Array.from(
+      new Set(
+        rawHashtags
+          .map(
+            normalizeHashtag,
+          )
+          .filter(Boolean),
+      ),
+    ).slice(0, 8);
+
+  return {
+    title:
+      typeof record.title ===
+      "string"
+        ? record.title.trim()
+        : "",
+
+    hook:
+      typeof record.hook ===
+      "string"
+        ? record.hook.trim()
+        : "",
+
+    script:
+      typeof record.script ===
+      "string"
+        ? record.script.trim()
+        : "",
+
+    screenText,
+
+    caption:
+      typeof record.caption ===
+      "string"
+        ? record.caption.trim()
+        : "",
+
+    hashtags,
+
+    visualIdea:
+      typeof record.visualIdea ===
+      "string"
+        ? record.visualIdea.trim()
+        : "",
+
+    duration:
+      typeof record.duration ===
+      "string"
+        ? record.duration.trim()
+        : "20 secondes",
+  };
 }
 
 export async function POST(
@@ -104,8 +227,9 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           error:
-            "OPENAI_API_KEY est absente.",
+            "La clé API OpenAI n'est pas configurée.",
         },
         {
           status: 500,
@@ -116,32 +240,31 @@ export async function POST(
     const body =
       await request.json();
 
-    const contentType =
-      String(
-        body?.contentType ?? "",
-      ).trim();
+    const type =
+      typeof body?.type ===
+      "string"
+        ? body.type.trim()
+        : "";
 
     const subject =
-      String(
-        body?.subject ?? "",
-      ).trim();
+      typeof body?.subject ===
+      "string"
+        ? body.subject.trim()
+        : "";
 
     const tone =
-      String(
-        body?.tone ??
-          "naturel, chaleureux et professionnel",
-      ).trim();
+      typeof body?.tone ===
+      "string"
+        ? body.tone.trim()
+        : "Naturel et chaleureux";
 
-    if (
-      !ALLOWED_CONTENT_TYPES.includes(
-        contentType,
-      )
-    ) {
+    if (!type) {
       return NextResponse.json(
         {
           success: false,
+
           error:
-            "Type de contenu invalide.",
+            "Le type de contenu est obligatoire.",
         },
         {
           status: 400,
@@ -150,61 +273,78 @@ export async function POST(
     }
 
     const prompt = `
-Tu es le studio éditorial TikTok de Klarys.
+Tu es le responsable éditorial TikTok de Klarys AI OS.
 
-Tu crées un contenu vidéo court en français pour le compte Klarys.
+Tu dois créer un contenu TikTok français court, naturel, crédible et optimisé pour la rétention.
 
 TYPE DE CONTENU :
-${contentType}
+${type}
 
-SUJET OU IDÉE :
-${subject || "Choisis toi-même un sujet pertinent et engageant."}
+SUJET :
+${subject || "Choisis un angle pertinent adapté au type de contenu."}
 
 TON :
 ${tone}
 
 OBJECTIF :
-Créer un contenu TikTok naturel, crédible, humain, facile à comprendre et adapté à une vidéo verticale courte.
+Créer une vidéo verticale d'environ 20 secondes structurée en 4 scènes de 5 secondes.
 
-RÈGLES :
-- Pas de clickbait agressif.
-- Pas de promesse garantie.
-- Pas de diagnostic médical.
-- Pour la psycho-énergétique, rester dans le bien-être et l'accompagnement.
-- Pour la voyance, présenter le contenu comme intuitif ou symbolique, jamais comme une certitude absolue.
-- Ne pas créer de conseil dangereux.
-- Ne pas inventer de témoignages.
-- Éviter les phrases génériques trop "IA".
-- Le français doit être naturel.
-- L'accroche doit retenir l'attention dans les 2 premières secondes.
-- Le script doit être facile à dire à voix haute.
-- La vidéo visée doit durer environ 15 à 35 secondes.
-- Les hashtags doivent être pertinents et raisonnables : 4 à 7 maximum.
+RÈGLES DE CONTENU :
+- français naturel et fluide ;
+- accroche forte dès la première seconde ;
+- pas de promesse mensongère ;
+- pas de santé, grossesse ou contenu destiné aux mineurs ;
+- pas de formulation anxiogène ;
+- éviter les clichés excessivement mystiques ;
+- le script voix doit pouvoir être lu en environ 20 secondes ;
+- la légende doit compléter la vidéo sans recopier mot pour mot le script ;
+- les textes écran doivent être courts et lisibles.
 
-RETOURNE UNIQUEMENT UN OBJET JSON VALIDE.
-Aucun markdown.
-Aucun texte avant ou après.
+HASHTAGS — TRÈS IMPORTANT :
+Tu dois sélectionner les hashtags les plus pertinents pour CE sujet précis.
+Utilise la recherche web si elle aide à identifier les usages actuels et pertinents.
+Choisis 6 à 8 hashtags maximum.
+Mélange intelligemment :
+1. 2 à 3 hashtags très ciblés sur le sujet exact ;
+2. 2 à 3 hashtags de niche réellement utilisés par l'audience concernée ;
+3. 1 à 2 hashtags plus larges mais toujours directement pertinents.
 
-Utilise exactement cette structure :
+Interdictions :
+- ne mets PAS automatiquement #fyp, #foryou, #viral ou #tiktok ;
+- ne mets PAS #klarys sauf si la marque est réellement le sujet de la vidéo ;
+- ne mets PAS #bienetre si le contenu ne concerne pas directement le bien-être ;
+- aucun hashtag hors sujet ;
+- aucun doublon ;
+- privilégie la pertinence et l'intention de recherche plutôt que le volume brut.
+
+VISUEL :
+Le champ visualIdea doit décrire un univers cinématographique concret qui pourra ensuite être découpé en quatre scènes Runway différentes.
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, avec exactement cette structure :
 
 {
-  "title": "titre interne court",
-  "hook": "phrase d'accroche",
-  "script": "script complet à dire",
+  "title": "Titre court",
+  "hook": "Accroche",
+  "script": "Script voix d'environ 20 secondes",
   "screenText": [
-    "texte écran 1",
-    "texte écran 2",
-    "texte écran 3"
+    "Texte scène 1",
+    "Texte scène 2",
+    "Texte scène 3",
+    "Texte scène 4"
   ],
-  "caption": "légende TikTok",
+  "caption": "Légende TikTok naturelle",
   "hashtags": [
     "#hashtag1",
-    "#hashtag2"
+    "#hashtag2",
+    "#hashtag3",
+    "#hashtag4",
+    "#hashtag5",
+    "#hashtag6"
   ],
-  "visualIdea": "description simple de la vidéo ou des plans à utiliser",
-  "duration": "20-30 secondes"
+  "visualIdea": "Description visuelle détaillée",
+  "duration": "20 secondes"
 }
-`;
+    `.trim();
 
     const response =
       await fetch(
@@ -227,6 +367,19 @@ Utilise exactement cette structure :
 
               input:
                 prompt,
+
+              tools: [
+                {
+                  type:
+                    "web_search",
+                },
+              ],
+
+              tool_choice:
+                "auto",
+
+              max_output_tokens:
+                1800,
             }),
 
           cache:
@@ -235,18 +388,23 @@ Utilise exactement cette structure :
       );
 
     const data =
-      await response.json();
+      (await response.json()) as
+        OpenAIResponse;
 
     if (!response.ok) {
-      const openAIError =
+      const message =
         data?.error?.message ??
-        "Erreur OpenAI.";
+        "OpenAI a refusé la génération du contenu TikTok.";
 
       return NextResponse.json(
         {
           success: false,
+
+          status:
+            response.status,
+
           error:
-            openAIError,
+            `OpenAI HTTP ${response.status} — ${message}`,
         },
         {
           status:
@@ -264,46 +422,86 @@ Utilise exactement cette structure :
       return NextResponse.json(
         {
           success: false,
+
           error:
-            "OpenAI n'a retourné aucun contenu.",
+            "OpenAI n'a retourné aucun contenu exploitable.",
         },
         {
-          status: 500,
+          status: 502,
         },
       );
     }
 
-    let generated:
-      GeneratedTikTokContent;
+    let parsed:
+      unknown;
 
     try {
-      generated =
-        parseJsonResponse(
-          outputText,
+      parsed =
+        JSON.parse(
+          cleanJsonText(
+            outputText,
+          ),
         );
     } catch {
+      console.error(
+        "OPENAI TIKTOK JSON PARSE ERROR",
+        {
+          outputText,
+        },
+      );
+
       return NextResponse.json(
         {
           success: false,
+
           error:
-            "La réponse IA n'a pas pu être interprétée.",
-          raw:
-            outputText,
+            "OpenAI a retourné un format inattendu. Réessaie la génération.",
         },
         {
-          status: 500,
+          status: 502,
+        },
+      );
+    }
+
+    const content =
+      normalizeContent(
+        parsed,
+      );
+
+    if (
+      !content.title ||
+      !content.hook ||
+      !content.script ||
+      !content.caption ||
+      content.screenText.length <
+        4
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+
+          error:
+            "Le contenu généré est incomplet. Réessaie la génération.",
+        },
+        {
+          status: 502,
         },
       );
     }
 
     return NextResponse.json({
       success: true,
-      content:
-        generated,
+
+      content,
     });
   } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erreur inconnue.";
+
     console.error(
-      "KLARYS TIKTOK AI ERROR",
+      "OPENAI TIKTOK CONTENT ERROR",
       error,
     );
 
@@ -312,9 +510,7 @@ Utilise exactement cette structure :
         success: false,
 
         error:
-          error instanceof Error
-            ? error.message
-            : "Impossible de générer le contenu.",
+          message,
       },
       {
         status: 500,

@@ -1120,10 +1120,6 @@ No logos, subtitles, readable text or watermark.
       return;
     }
 
-    setVideoLoading(true);
-    setVideoError("");
-    setCurrentScene(1);
-
     const prompts =
       buildScenePrompts(
         generated,
@@ -1133,11 +1129,13 @@ No logos, subtitles, readable text or watermark.
       setVideoError(
         "Le prompt de la scène 1 est introuvable.",
       );
-      setVideoLoading(false);
-      setCurrentScene(0);
 
       return;
     }
+
+    setVideoLoading(true);
+    setVideoError("");
+    setCurrentScene(1);
 
     const testScenes:
       SceneState[] =
@@ -1145,24 +1143,61 @@ No logos, subtitles, readable text or watermark.
         (
           _prompt,
           index,
-        ) => ({
-          scene:
-            index + 1,
+        ) => {
+          const sceneNumber =
+            index + 1;
 
-          title:
-            getSceneTitle(
-              index + 1,
-            ),
+          const existing =
+            scenes.find(
+              (scene) =>
+                scene.scene ===
+                sceneNumber,
+            );
 
-          taskId:
-            "",
+          if (
+            sceneNumber === 1
+          ) {
+            return {
+              scene:
+                1,
 
-          status:
-            "WAITING",
+              title:
+                getSceneTitle(
+                  1,
+                ),
 
-          videoUrl:
-            "",
-        }),
+              taskId:
+                "",
+
+              status:
+                "WAITING",
+
+              videoUrl:
+                "",
+            };
+          }
+
+          return (
+            existing ?? {
+              scene:
+                sceneNumber,
+
+              title:
+                getSceneTitle(
+                  sceneNumber,
+                ),
+
+              taskId:
+                "",
+
+              status:
+                "WAITING",
+
+              videoUrl:
+                "",
+            }
+          );
+        },
       );
 
     setScenes(
@@ -1190,6 +1225,7 @@ No logos, subtitles, readable text or watermark.
           : "Impossible de tester la scène 1.",
       );
     } finally {
+      setCurrentScene(0);
       setVideoLoading(false);
     }
   }
@@ -1484,6 +1520,35 @@ No logos, subtitles, readable text or watermark.
   const allScenesFinished =
     scenes.length === 4 &&
     finishedSceneCount === 4;
+
+  const firstScene =
+    scenes.find(
+      (scene) =>
+        scene.scene === 1,
+    );
+
+  const firstSceneSucceeded =
+    firstScene?.status ===
+      "SUCCEEDED" &&
+    Boolean(
+      firstScene.videoUrl,
+    );
+
+  const testCanRun =
+    Boolean(
+      generated &&
+      characterReferenceUrl,
+    ) &&
+    !videoLoading &&
+    !firstSceneSucceeded;
+
+  const finalCanRun =
+    Boolean(
+      generated &&
+      characterReferenceUrl,
+    ) &&
+    !videoLoading &&
+    !allScenesFinished;
 
   /*
    * Aperçu exact des prompts qui seront envoyés à Runway.
@@ -2084,9 +2149,12 @@ No logos, subtitles, readable text or watermark.
                     <p className="mt-3 text-xs text-slate-500">
                       Statut Runway :{" "}
                       <strong className="text-slate-300">
-                        {getVideoStatusLabel(
-                          characterStatus,
-                        )}
+                        {characterStatus ===
+                        "SUCCEEDED"
+                          ? "Image de référence prête"
+                          : getVideoStatusLabel(
+                              characterStatus,
+                            )}
                       </strong>
                     </p>
                   )}
@@ -2157,48 +2225,47 @@ No logos, subtitles, readable text or watermark.
               </div>
 
               <div className="mt-5 flex flex-wrap gap-3">
-                {scenes.length === 0 && (
-                  <button
-                    type="button"
-                    onClick={
-                      testFirstScene
-                    }
-                    disabled={
-                      videoLoading ||
-                      !characterReferenceUrl
-                    }
-                    className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-6 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    🧪 Tester scène 1 · 10 crédits
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={
+                    testFirstScene
+                  }
+                  disabled={
+                    !testCanRun
+                  }
+                  className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-6 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {videoLoading &&
+                  currentScene === 1 &&
+                  !firstSceneSucceeded
+                    ? "🧪 Test scène 1 en cours..."
+                    : firstSceneSucceeded
+                      ? "✓ Test scène 1 réussi"
+                      : "🧪 Tester scène 1 · 10 crédits"}
+                </button>
 
                 <button
                   type="button"
                   onClick={
-                    scenes.length > 0 &&
-                    !allScenesFinished
+                    scenes.length > 0
                       ? resumeMissingScenes
                       : createVideo
                   }
                   disabled={
-                    videoLoading ||
-                    allScenesFinished ||
-                    !characterReferenceUrl
+                    !finalCanRun ||
+                    !firstSceneSucceeded
                   }
                   className="rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {videoLoading
-                    ? currentScene > 0
-                      ? `🎬 Scène ${currentScene}/4 — ${finishedSceneCount} terminée(s)`
-                      : "🎬 Finalisation..."
-                    : allScenesFinished
-                      ? "✓ Les 4 scènes sont terminées"
-                      : !characterReferenceUrl
-                        ? "👤 Génère d'abord le personnage"
+                  {allScenesFinished
+                    ? "✓ Les 4 scènes sont terminées"
+                    : !characterReferenceUrl
+                      ? "👤 Génère d'abord le personnage"
+                      : !firstSceneSucceeded
+                        ? "🔒 Valide d'abord le test scène 1"
                         : scenes.length > 0
-                          ? "▶ Reprendre les scènes manquantes"
-                          : "✅ Valider et créer les 4 scènes IA"}
+                          ? "▶ Générer les scènes restantes · max 75 crédits"
+                          : "🎬 Générer les 4 scènes · 100 crédits"}
                 </button>
 
                 {scenes.length > 0 &&
@@ -2216,12 +2283,26 @@ No logos, subtitles, readable text or watermark.
                   )}
               </div>
 
+              {firstSceneSucceeded && (
+                <div className="mt-5 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+                  <p className="text-sm font-semibold text-emerald-300">
+                    ✓ Test de continuité réussi côté génération
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-400">
+                    Regarde la vidéo de la scène 1 ci-dessous. Si le personnage te convient, le bouton violet permet de lancer uniquement les scènes restantes.
+                  </p>
+                </div>
+              )}
+
               {videoLoading && (
                 <div className="mt-5">
                   <div className="flex items-center justify-between text-xs text-slate-400">
                     <span>
-                      Génération
-                      séquentielle
+                      {currentScene === 1 &&
+                      !firstSceneSucceeded
+                        ? "Test scène 1"
+                        : "Génération séquentielle"}
                     </span>
 
                     <span>

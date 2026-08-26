@@ -15,7 +15,17 @@ const RUNWAY_IMAGE_TO_VIDEO_URL =
 const RUNWAY_API_VERSION =
   "2024-11-06";
 
-const SCENE_DURATION = 5;
+const FINAL_DURATION = 5;
+const TEST_DURATION = 2;
+
+const FINAL_MODEL =
+  "gen4_turbo";
+
+const TEST_MODEL =
+  "gen4_turbo";
+
+const GEN4_TURBO_CREDITS_PER_SECOND =
+  5;
 
 function getRunwayErrorMessage(
   data: unknown,
@@ -148,6 +158,9 @@ export async function POST(
         ? body.referenceImageUrl.trim()
         : "";
 
+    const testMode =
+      body?.testMode === true;
+
     if (!prompt) {
       return NextResponse.json(
         {
@@ -173,26 +186,29 @@ export async function POST(
         referenceImageUrl,
       );
 
+    const duration =
+      testMode
+        ? TEST_DURATION
+        : FINAL_DURATION;
+
+    const model =
+      testMode
+        ? TEST_MODEL
+        : FINAL_MODEL;
+
+    const estimatedCredits =
+      duration *
+      GEN4_TURBO_CREDITS_PER_SECOND;
+
     const runwayUrl =
       useReferenceImage
         ? RUNWAY_IMAGE_TO_VIDEO_URL
         : RUNWAY_TEXT_TO_VIDEO_URL;
 
-    /*
-     * Runway 2024-11-06 :
-     * pour positionner explicitement
-     * l'image en première frame,
-     * promptImage doit être un tableau
-     * d'objets { uri, position }.
-     *
-     * On n'envoie PAS "position"
-     * comme propriété top-level.
-     */
     const runwayBody =
       useReferenceImage
         ? {
-            model:
-              "gen4.5",
+            model,
 
             promptImage: [
               {
@@ -209,20 +225,17 @@ export async function POST(
             ratio:
               "720:1280",
 
-            duration:
-              SCENE_DURATION,
+            duration,
           }
         : {
-            model:
-              "gen4.5",
+            model,
 
             promptText,
 
             ratio:
               "720:1280",
 
-            duration:
-              SCENE_DURATION,
+            duration,
           };
 
     const response =
@@ -303,6 +316,14 @@ export async function POST(
             useReferenceImage
               ? "image-to-video"
               : "text-to-video",
+
+          testMode,
+
+          model,
+
+          duration,
+
+          estimatedCredits,
 
           status:
             response.status,
@@ -390,8 +411,13 @@ export async function POST(
 
       taskId,
 
-      duration:
-        SCENE_DURATION,
+      duration,
+
+      model,
+
+      testMode,
+
+      estimatedCredits,
 
       generationMode:
         useReferenceImage
@@ -401,7 +427,7 @@ export async function POST(
       referenceImageUsed:
         useReferenceImage,
 
-      estimatedCost:
+      runwayEstimatedCost:
         runwayData
           .estimatedCost ??
         null,

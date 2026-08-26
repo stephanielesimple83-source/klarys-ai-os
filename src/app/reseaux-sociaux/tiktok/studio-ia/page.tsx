@@ -959,6 +959,7 @@ No logos, subtitles, readable text or watermark.
   async function startOneScene(
     sceneNumber: number,
     prompt: string,
+    testMode = false,
   ) {
     setCurrentScene(
       sceneNumber,
@@ -997,6 +998,8 @@ No logos, subtitles, readable text or watermark.
                 referenceImageUrl:
                   characterReferenceUrl ||
                   undefined,
+
+                testMode,
               }),
           },
         );
@@ -1096,6 +1099,99 @@ No logos, subtitles, readable text or watermark.
       lastError ||
         `Impossible de démarrer la scène ${sceneNumber}.`,
     );
+  }
+
+  async function testFirstScene() {
+    if (!generated) {
+      setVideoError(
+        "Génère d'abord le contenu.",
+      );
+
+      return;
+    }
+
+    if (
+      !characterReferenceUrl
+    ) {
+      setVideoError(
+        "Génère et valide d'abord le personnage de référence.",
+      );
+
+      return;
+    }
+
+    setVideoLoading(true);
+    setVideoError("");
+    setCurrentScene(1);
+
+    const prompts =
+      buildScenePrompts(
+        generated,
+      );
+
+    if (!prompts[0]) {
+      setVideoError(
+        "Le prompt de la scène 1 est introuvable.",
+      );
+      setVideoLoading(false);
+      setCurrentScene(0);
+
+      return;
+    }
+
+    const testScenes:
+      SceneState[] =
+      prompts.map(
+        (
+          _prompt,
+          index,
+        ) => ({
+          scene:
+            index + 1,
+
+          title:
+            getSceneTitle(
+              index + 1,
+            ),
+
+          taskId:
+            "",
+
+          status:
+            "WAITING",
+
+          videoUrl:
+            "",
+        }),
+      );
+
+    setScenes(
+      testScenes,
+    );
+
+    try {
+      const taskId =
+        await startOneScene(
+          1,
+          prompts[0],
+          true,
+        );
+
+      await waitForSceneCompletion(
+        1,
+        taskId,
+      );
+
+      setCurrentScene(0);
+    } catch (error) {
+      setVideoError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de tester la scène 1.",
+      );
+    } finally {
+      setVideoLoading(false);
+    }
   }
 
   async function createVideo() {
@@ -2031,10 +2127,52 @@ No logos, subtitles, readable text or watermark.
               </h3>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                Les 4 scènes de 5 secondes sont créées l&apos;une après l&apos;autre en utilisant le même personnage de référence pour améliorer la continuité visuelle.
+                Commence par le test de 2 secondes à 10 crédits. Si le personnage reste cohérent, la version finale utilise Gen-4 Turbo : 25 crédits par scène de 5 secondes, soit 100 crédits pour les 4 scènes.
               </p>
 
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">
+                    Test continuité
+                  </p>
+                  <p className="mt-2 text-lg font-bold text-white">
+                    2 secondes · 10 crédits
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                    Gen-4 Turbo. Ce bouton ne génère que la scène 1.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-violet-500/25 bg-violet-500/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                    Génération finale
+                  </p>
+                  <p className="mt-2 text-lg font-bold text-white">
+                    4 × 5 secondes · 100 crédits
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                    25 crédits par scène avec Gen-4 Turbo.
+                  </p>
+                </div>
+              </div>
+
               <div className="mt-5 flex flex-wrap gap-3">
+                {scenes.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={
+                      testFirstScene
+                    }
+                    disabled={
+                      videoLoading ||
+                      !characterReferenceUrl
+                    }
+                    className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-6 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    🧪 Tester scène 1 · 10 crédits
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={
@@ -2168,7 +2306,9 @@ No logos, subtitles, readable text or watermark.
                             <p className="px-4 text-center text-xs leading-5 text-slate-500">
                               {scene.status ===
                               "WAITING"
-                                ? "Cette scène démarrera après la précédente."
+                                ? scene.scene === 1
+                                  ? "Scène prête à être générée."
+                                  : "Cette scène n'a pas encore été générée."
                                 : scene.status ===
                                     "THROTTLED"
                                   ? "Runway temporise. Nouvelle tentative automatique..."

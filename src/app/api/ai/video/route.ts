@@ -6,8 +6,11 @@ import {
 export const dynamic =
   "force-dynamic";
 
-const RUNWAY_API_URL =
+const RUNWAY_TEXT_TO_VIDEO_URL =
   "https://api.dev.runwayml.com/v1/text_to_video";
+
+const RUNWAY_IMAGE_TO_VIDEO_URL =
+  "https://api.dev.runwayml.com/v1/image_to_video";
 
 const RUNWAY_API_VERSION =
   "2024-11-06";
@@ -139,6 +142,12 @@ export async function POST(
         ? body.prompt.trim()
         : "";
 
+    const referenceImageUrl =
+      typeof body?.referenceImageUrl ===
+      "string"
+        ? body.referenceImageUrl.trim()
+        : "";
+
     if (!prompt) {
       return NextResponse.json(
         {
@@ -159,9 +168,74 @@ export async function POST(
         1000,
       );
 
+    /*
+     * Si une image de référence
+     * est disponible, on passe en
+     * image-to-video.
+     *
+     * Sinon, on conserve le mode
+     * text-to-video actuel.
+     */
+    const useReferenceImage =
+      Boolean(
+        referenceImageUrl,
+      );
+
+    const runwayUrl =
+      useReferenceImage
+        ? RUNWAY_IMAGE_TO_VIDEO_URL
+        : RUNWAY_TEXT_TO_VIDEO_URL;
+
+    const runwayBody =
+      useReferenceImage
+        ? {
+            model:
+              "gen4.5",
+
+            promptImage:
+              referenceImageUrl,
+
+            /*
+             * Runway utilise cette
+             * image comme première
+             * frame de la vidéo.
+             */
+            position:
+              "first",
+
+            promptText,
+
+            ratio:
+              "720:1280",
+
+            duration:
+              SCENE_DURATION,
+          }
+        : {
+            model:
+              "gen4.5",
+
+            promptText,
+
+            ratio:
+              "720:1280",
+
+            duration:
+              SCENE_DURATION,
+
+            /*
+             * On évite que Runway
+             * génère un son inutile.
+             * La voix sera ajoutée
+             * ensuite par Klarys AI OS.
+             */
+            audio:
+              false,
+          };
+
     const response =
       await fetch(
-        RUNWAY_API_URL,
+        runwayUrl,
         {
           method: "POST",
 
@@ -177,33 +251,15 @@ export async function POST(
           },
 
           body:
-            JSON.stringify({
-              model:
-                "gen4.5",
-
-              promptText,
-
-              ratio:
-                "720:1280",
-
-              duration:
-                SCENE_DURATION,
-            }),
+            JSON.stringify(
+              runwayBody,
+            ),
 
           cache:
             "no-store",
         },
       );
 
-    /*
-     * On lit la réponse comme texte
-     * avant de tenter de la convertir
-     * en JSON.
-     *
-     * Cela permet de récupérer aussi
-     * les erreurs Runway qui ne seraient
-     * pas renvoyées au format JSON.
-     */
     const rawResponse =
       await response.text();
 
@@ -251,6 +307,11 @@ export async function POST(
       console.error(
         "RUNWAY VIDEO ERROR",
         {
+          mode:
+            useReferenceImage
+              ? "image-to-video"
+              : "text-to-video",
+
           status:
             response.status,
 
@@ -339,6 +400,14 @@ export async function POST(
 
       duration:
         SCENE_DURATION,
+
+      generationMode:
+        useReferenceImage
+          ? "image-to-video"
+          : "text-to-video",
+
+      referenceImageUsed:
+        useReferenceImage,
 
       estimatedCost:
         runwayData

@@ -46,6 +46,7 @@ type VideoStatusResponse = {
   taskId?: string;
   status?: string;
   videoUrl?: string | null;
+  outputUrl?: string | null;
   error?: string;
 };
 
@@ -177,6 +178,9 @@ type SavedStudioProject = {
   tone: string;
   generated: GeneratedContent | null;
   scenes: SceneState[];
+  characterReferenceUrl?: string;
+  characterTaskId?: string;
+  characterStatus?: string;
   savedAt: string;
 };
 
@@ -251,6 +255,36 @@ export default function TikTokAIStudioPage() {
     useState(0);
 
   const [
+    characterReferenceUrl,
+    setCharacterReferenceUrl,
+  ] =
+    useState("");
+
+  const [
+    characterTaskId,
+    setCharacterTaskId,
+  ] =
+    useState("");
+
+  const [
+    characterStatus,
+    setCharacterStatus,
+  ] =
+    useState("");
+
+  const [
+    characterLoading,
+    setCharacterLoading,
+  ] =
+    useState(false);
+
+  const [
+    characterError,
+    setCharacterError,
+  ] =
+    useState("");
+
+  const [
     projectRestored,
     setProjectRestored,
   ] =
@@ -299,6 +333,21 @@ export default function TikTokAIStudioPage() {
         setGenerated(
           saved.generated ??
             null,
+        );
+
+        setCharacterReferenceUrl(
+          saved.characterReferenceUrl ??
+            "",
+        );
+
+        setCharacterTaskId(
+          saved.characterTaskId ??
+            "",
+        );
+
+        setCharacterStatus(
+          saved.characterStatus ??
+            "",
         );
 
         const savedScenes =
@@ -431,6 +480,12 @@ export default function TikTokAIStudioPage() {
 
         scenes,
 
+        characterReferenceUrl,
+
+        characterTaskId,
+
+        characterStatus,
+
         savedAt:
           new Date().toISOString(),
       };
@@ -457,6 +512,9 @@ export default function TikTokAIStudioPage() {
     tone,
     generated,
     scenes,
+    characterReferenceUrl,
+    characterTaskId,
+    characterStatus,
   ]);
 
   async function generateContent() {
@@ -475,6 +533,10 @@ export default function TikTokAIStudioPage() {
     setScenes([]);
     setCurrentScene(0);
     setVideoError("");
+    setCharacterReferenceUrl("");
+    setCharacterTaskId("");
+    setCharacterStatus("");
+    setCharacterError("");
 
     try {
       const response =
@@ -541,6 +603,10 @@ export default function TikTokAIStudioPage() {
     setScenes([]);
     setCurrentScene(0);
     setVideoError("");
+    setCharacterReferenceUrl("");
+    setCharacterTaskId("");
+    setCharacterStatus("");
+    setCharacterError("");
   }
 
   async function checkVideoStatus(
@@ -579,6 +645,145 @@ export default function TikTokAIStudioPage() {
     }
 
     return data;
+  }
+
+  async function waitForCharacterCompletion(
+    taskId: string,
+  ) {
+    for (
+      let attempt = 0;
+      attempt < 100;
+      attempt++
+    ) {
+      await wait(4000);
+
+      const statusData =
+        await checkVideoStatus(
+          taskId,
+        );
+
+      const status =
+        statusData.status ??
+        "UNKNOWN";
+
+      setCharacterStatus(
+        status,
+      );
+
+      if (
+        status ===
+        "SUCCEEDED"
+      ) {
+        const outputUrl =
+          statusData.outputUrl ??
+          statusData.videoUrl ??
+          "";
+
+        if (!outputUrl) {
+          throw new Error(
+            "L'image personnage est terminée mais aucune URL n'a été retournée.",
+          );
+        }
+
+        setCharacterReferenceUrl(
+          outputUrl,
+        );
+
+        return outputUrl;
+      }
+
+      if (
+        status ===
+          "FAILED" ||
+        status ===
+          "CANCELED"
+      ) {
+        throw new Error(
+          "Runway n'a pas pu générer le personnage de référence.",
+        );
+      }
+    }
+
+    throw new Error(
+      "La génération du personnage est toujours en cours après plusieurs minutes.",
+    );
+  }
+
+  async function generateCharacterReference() {
+    if (!generated) {
+      setCharacterError(
+        "Génère d'abord le contenu TikTok.",
+      );
+
+      return;
+    }
+
+    setCharacterLoading(true);
+    setCharacterError("");
+    setCharacterReferenceUrl("");
+    setCharacterTaskId("");
+    setCharacterStatus(
+      "INITIALIZING",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/ai/character",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                prompt:
+                  `Photorealistic cinematic reference portrait for the recurring main character of this TikTok video. Adult French woman, early thirties, shoulder-length warm brown hair, brown eyes, refined natural facial features, elegant cream beige blouse, discreet small gold earrings. Warm natural daylight, sophisticated modern interior, realistic skin texture, calm confident expression, medium portrait framing showing face, hairstyle, blouse and upper body clearly. The exact same woman, hairstyle and clothing will be reused across four cinematic vertical scenes. No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermark. Shared visual direction: ${generated.visualIdea}`.slice(
+                    0,
+                    1000,
+                  ),
+              }),
+          },
+        );
+
+      const data =
+        (await response.json()) as
+          VideoStartResponse;
+
+      if (
+        !response.ok ||
+        !data.success ||
+        !data.taskId
+      ) {
+        throw new Error(
+          data.error ||
+            "Impossible de générer le personnage de référence.",
+        );
+      }
+
+      setCharacterTaskId(
+        data.taskId,
+      );
+
+      setCharacterStatus(
+        "PENDING",
+      );
+
+      await waitForCharacterCompletion(
+        data.taskId,
+      );
+    } catch (error) {
+      setCharacterError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de générer le personnage de référence.",
+      );
+    } finally {
+      setCharacterLoading(false);
+    }
   }
 
   function buildScenePrompts(
@@ -788,6 +993,10 @@ No logos, subtitles, readable text or watermark.
             body:
               JSON.stringify({
                 prompt,
+
+                referenceImageUrl:
+                  characterReferenceUrl ||
+                  undefined,
               }),
           },
         );
@@ -898,6 +1107,16 @@ No logos, subtitles, readable text or watermark.
       return;
     }
 
+    if (
+      !characterReferenceUrl
+    ) {
+      setVideoError(
+        "Génère et valide d'abord le personnage de référence.",
+      );
+
+      return;
+    }
+
     setVideoLoading(true);
     setVideoError("");
     setCurrentScene(1);
@@ -982,6 +1201,16 @@ No logos, subtitles, readable text or watermark.
     if (!generated) {
       setVideoError(
         "Génère d'abord le contenu.",
+      );
+
+      return;
+    }
+
+    if (
+      !characterReferenceUrl
+    ) {
+      setVideoError(
+        "Le personnage de référence est manquant. Génère-le avant de reprendre les scènes.",
       );
 
       return;
@@ -1688,6 +1917,109 @@ No logos, subtitles, readable text or watermark.
                 </div>
               )}
 
+            <div className="mt-7 rounded-3xl border border-fuchsia-500/30 bg-fuchsia-500/5 p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-fuchsia-300">
+                    Personnage de référence
+                  </p>
+
+                  <h3 className="mt-2 text-xl font-bold text-white">
+                    Garde la même femme dans les 4 scènes
+                  </h3>
+
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                    Génère une image de référence une seule fois. Cette même image sera ensuite transmise aux quatre vidéos Runway pour améliorer la continuité du visage, des cheveux et de la tenue.
+                  </p>
+                </div>
+
+                {characterReferenceUrl && (
+                  <span className="w-fit rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300">
+                    ✓ Référence prête
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-6 grid gap-5 md:grid-cols-[220px_1fr]">
+                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+                  {characterReferenceUrl ? (
+                    <img
+                      src={
+                        characterReferenceUrl
+                      }
+                      alt="Personnage de référence"
+                      className="aspect-[9/16] w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex aspect-[9/16] items-center justify-center p-5 text-center text-sm leading-6 text-slate-500">
+                      {characterLoading
+                        ? "Runway crée le personnage de référence..."
+                        : "Aucun personnage de référence généré."}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-sm leading-6 text-slate-300">
+                    Vérifie surtout le visage, la coiffure et la tenue. Si cette femme te convient, conserve-la avant de lancer les quatre scènes.
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={
+                        generateCharacterReference
+                      }
+                      disabled={
+                        characterLoading ||
+                        videoLoading
+                      }
+                      className="rounded-xl bg-fuchsia-500 px-5 py-3 font-semibold text-white transition hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {characterLoading
+                        ? "Création du personnage..."
+                        : characterReferenceUrl
+                          ? "🔄 Régénérer le personnage"
+                          : "👤 Générer le personnage de référence"}
+                    </button>
+                  </div>
+
+                  {characterStatus && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      Statut Runway :{" "}
+                      <strong className="text-slate-300">
+                        {getVideoStatusLabel(
+                          characterStatus,
+                        )}
+                      </strong>
+                    </p>
+                  )}
+
+                  {characterError && (
+                    <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                      <p className="text-sm text-rose-200">
+                        {
+                          characterError
+                        }
+                      </p>
+                    </div>
+                  )}
+
+                  {characterReferenceUrl && (
+                    <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                      <p className="text-sm font-semibold text-emerald-300">
+                        Cette image sera utilisée pour les 4 scènes
+                      </p>
+
+                      <p className="mt-1 text-sm leading-6 text-slate-400">
+                        Si elle te convient, tu peux passer à l&apos;étape suivante. Sinon, régénère-la avant de dépenser les crédits vidéo.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="mt-7 rounded-3xl border border-violet-500/30 bg-violet-500/5 p-6">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-violet-300">
                 Étape 3
@@ -1699,11 +2031,7 @@ No logos, subtitles, readable text or watermark.
               </h3>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                Les 4 scènes de 5
-                secondes sont créées
-                l&apos;une après
-                l&apos;autre pour éviter
-                les limitations Runway.
+                Les 4 scènes de 5 secondes sont créées l&apos;une après l&apos;autre en utilisant le même personnage de référence pour améliorer la continuité visuelle.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
@@ -1717,7 +2045,8 @@ No logos, subtitles, readable text or watermark.
                   }
                   disabled={
                     videoLoading ||
-                    allScenesFinished
+                    allScenesFinished ||
+                    !characterReferenceUrl
                   }
                   className="rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -1727,9 +2056,11 @@ No logos, subtitles, readable text or watermark.
                       : "🎬 Finalisation..."
                     : allScenesFinished
                       ? "✓ Les 4 scènes sont terminées"
-                      : scenes.length > 0
-                        ? "▶ Reprendre les scènes manquantes"
-                        : "✅ Valider et créer les 4 scènes IA"}
+                      : !characterReferenceUrl
+                        ? "👤 Génère d'abord le personnage"
+                        : scenes.length > 0
+                          ? "▶ Reprendre les scènes manquantes"
+                          : "✅ Valider et créer les 4 scènes IA"}
                 </button>
 
                 {scenes.length > 0 &&

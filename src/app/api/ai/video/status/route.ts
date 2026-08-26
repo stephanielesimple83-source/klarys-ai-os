@@ -109,11 +109,22 @@ export async function POST(
         ? data.output
         : [];
 
-    const videoUrl =
+    const outputUrl =
       typeof output?.[0] ===
       "string"
         ? output[0]
         : null;
+
+    /*
+     * Compatibilité :
+     * videoUrl reste disponible pour
+     * le code vidéo existant.
+     *
+     * outputUrl est le nom générique
+     * utilisé aussi pour une image.
+     */
+    const videoUrl =
+      outputUrl;
 
     const failureCode =
       typeof data?.failureCode ===
@@ -143,7 +154,7 @@ export async function POST(
           "INPUT_PREPROCESSING.SAFETY.TEXT"
       ) {
         failureMessage =
-          "Runway a refusé cette scène pour des raisons de modération du contenu.";
+          "Runway a refusé cette génération pour des raisons de modération du contenu.";
       } else if (
         failureCode?.startsWith(
           "INTERNAL.BAD_OUTPUT",
@@ -162,7 +173,7 @@ export async function POST(
         "THIRD_PARTY.UNAVAILABLE"
       ) {
         failureMessage =
-          "Le moteur vidéo utilisé par Runway est temporairement indisponible.";
+          "Le moteur utilisé par Runway est temporairement indisponible.";
       } else if (
         failureCode ===
         "ASSET.INVALID"
@@ -178,7 +189,7 @@ export async function POST(
           "Runway a rencontré une erreur interne pendant la génération.";
       } else {
         failureMessage =
-          "Runway n'a pas pu générer cette scène.";
+          "Runway n'a pas pu terminer cette génération.";
       }
 
       if (failure) {
@@ -193,6 +204,8 @@ export async function POST(
       taskId,
 
       status,
+
+      outputUrl,
 
       videoUrl,
 

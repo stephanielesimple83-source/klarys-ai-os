@@ -168,14 +168,6 @@ export async function POST(
         1000,
       );
 
-    /*
-     * Si une image de référence
-     * est disponible, on passe en
-     * image-to-video.
-     *
-     * Sinon, on conserve le mode
-     * text-to-video actuel.
-     */
     const useReferenceImage =
       Boolean(
         referenceImageUrl,
@@ -186,22 +178,31 @@ export async function POST(
         ? RUNWAY_IMAGE_TO_VIDEO_URL
         : RUNWAY_TEXT_TO_VIDEO_URL;
 
+    /*
+     * Runway 2024-11-06 :
+     * pour positionner explicitement
+     * l'image en première frame,
+     * promptImage doit être un tableau
+     * d'objets { uri, position }.
+     *
+     * On n'envoie PAS "position"
+     * comme propriété top-level.
+     */
     const runwayBody =
       useReferenceImage
         ? {
             model:
               "gen4.5",
 
-            promptImage:
-              referenceImageUrl,
+            promptImage: [
+              {
+                uri:
+                  referenceImageUrl,
 
-            /*
-             * Runway utilise cette
-             * image comme première
-             * frame de la vidéo.
-             */
-            position:
-              "first",
+                position:
+                  "first",
+              },
+            ],
 
             promptText,
 
@@ -222,15 +223,6 @@ export async function POST(
 
             duration:
               SCENE_DURATION,
-
-            /*
-             * On évite que Runway
-             * génère un son inutile.
-             * La voix sera ajoutée
-             * ensuite par Klarys AI OS.
-             */
-            audio:
-              false,
           };
 
     const response =

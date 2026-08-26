@@ -59,6 +59,49 @@ function getRunwayErrorMessage(
     ) {
       return errorObject.message;
     }
+
+    if (
+      typeof errorObject.detail ===
+      "string"
+    ) {
+      return errorObject.detail;
+    }
+
+    if (
+      typeof errorObject.code ===
+      "string"
+    ) {
+      return errorObject.code;
+    }
+
+    try {
+      return JSON.stringify(
+        errorObject,
+      );
+    } catch {
+      return "";
+    }
+  }
+
+  if (
+    typeof record.detail ===
+    "string"
+  ) {
+    return record.detail;
+  }
+
+  if (
+    typeof record.failure ===
+    "string"
+  ) {
+    return record.failure;
+  }
+
+  if (
+    typeof record.reason ===
+    "string"
+  ) {
+    return record.reason;
   }
 
   return "";
@@ -75,6 +118,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           error:
             "La clé API Runway n'est pas configurée.",
         },
@@ -93,19 +137,45 @@ export async function POST(
         ? body.prompt.trim()
         : "";
 
-    const promptText =
-      customPrompt ||
+    const defaultPrompt =
       `
 Photorealistic cinematic portrait of an elegant adult French woman in her early thirties.
-Shoulder-length warm brown hair, natural hairstyle, brown eyes, refined natural facial features.
-She wears the same elegant cream beige blouse and discreet small gold earrings.
-Warm natural daylight, bright modern French interior, sophisticated but approachable appearance.
+Shoulder-length warm brown hair, natural hairstyle, brown eyes and refined natural facial features.
+She wears an elegant cream beige blouse and discreet small gold earrings.
+Warm natural daylight in a bright modern elegant interior.
+Natural realistic skin texture and realistic photography.
+Calm, warm and confident facial expression.
 Medium portrait framing showing her face, hairstyle, blouse and upper body clearly.
-Natural realistic skin texture, realistic photography, contemporary elegant aesthetic.
-Neutral calm confident expression.
-This woman will be used as the exact recurring main character of a vertical cinematic video series.
-No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermark.
+She is the recurring main character of a cinematic vertical social media video series.
+Neutral pose, hands relaxed, looking naturally toward the camera.
+No tarot cards.
+No oracle cards.
+No divination objects.
+No objects in her hands.
+No text.
+No subtitles.
+No logo.
+No watermark.
       `.trim();
+
+    const promptText =
+      (
+        customPrompt ||
+        defaultPrompt
+      ).slice(
+        0,
+        1000,
+      );
+
+    const runwayBody = {
+      model:
+        "gen4_image",
+
+      promptText,
+
+      ratio:
+        "1080:1920",
+    };
 
     const response =
       await fetch(
@@ -125,25 +195,22 @@ No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermar
           },
 
           body:
-            JSON.stringify({
-              model:
-                "gen4_image_turbo",
-
-              promptText:
-                promptText.slice(
-                  0,
-                  1000,
-                ),
-
-              ratio:
-                "720:1280",
-            }),
+            JSON.stringify(
+              runwayBody,
+            ),
 
           cache:
             "no-store",
         },
       );
 
+    /*
+     * On récupère d'abord la
+     * réponse brute afin de pouvoir
+     * afficher les erreurs Runway
+     * même si elles ne sont pas
+     * retournées sous forme JSON.
+     */
     const rawResponse =
       await response.text();
 
@@ -177,16 +244,43 @@ No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermar
           data;
       }
 
+      if (
+        !runwayMessage
+      ) {
+        runwayMessage =
+          response.statusText ||
+          "Erreur Runway inconnue.";
+      }
+
+      const fullMessage =
+        `Runway HTTP ${response.status} — ${runwayMessage}`;
+
+      console.error(
+        "RUNWAY CHARACTER ERROR",
+        {
+          status:
+            response.status,
+
+          statusText:
+            response.statusText,
+
+          requestBody:
+            runwayBody,
+
+          response:
+            data,
+        },
+      );
+
       return NextResponse.json(
         {
           success: false,
 
+          status:
+            response.status,
+
           error:
-            `Runway HTTP ${response.status} — ${
-              runwayMessage ||
-              response.statusText ||
-              "Erreur Runway inconnue."
-            }`,
+            fullMessage,
 
           runway:
             data,
@@ -206,8 +300,12 @@ No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermar
       return NextResponse.json(
         {
           success: false,
+
           error:
             "Réponse Runway invalide.",
+
+          runway:
+            data,
         },
         {
           status: 502,
@@ -233,7 +331,7 @@ No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermar
           success: false,
 
           error:
-            "Runway n'a pas retourné d'identifiant pour l'image.",
+            "Runway n'a pas retourné d'identifiant pour la génération du personnage.",
 
           runway:
             data,
@@ -246,11 +344,21 @@ No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermar
 
     return NextResponse.json({
       success: true,
+
       taskId,
+
       type:
         "character-reference",
+
+      model:
+        "gen4_image",
+
+      ratio:
+        "1080:1920",
+
       estimatedCost:
-        runwayData.estimatedCost ??
+        runwayData
+          .estimatedCost ??
         null,
     });
   } catch (error) {
@@ -260,13 +368,14 @@ No tarot cards, no objects in hands, no text, no subtitles, no logo, no watermar
         : "Erreur inconnue.";
 
     console.error(
-      "RUNWAY CHARACTER ERROR",
+      "RUNWAY CHARACTER ROUTE ERROR",
       error,
     );
 
     return NextResponse.json(
       {
         success: false,
+
         error:
           message,
       },
